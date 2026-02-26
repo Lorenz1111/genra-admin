@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { 
-  Box, Typography, Paper, Button, IconButton, Tooltip, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, 
-  Snackbar, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem, OutlinedInput
+  Box, Typography, Paper, Button, IconButton, Tooltip, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, 
+  Snackbar, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem, OutlinedInput 
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
@@ -44,7 +43,6 @@ export default function MyBooks() {
     const fetchData = async () => {
       if (!session) return;
 
-      // SENIOR DEV FIX: Idinagdag natin yung `chapters (id)` para mabilang natin!
       const { data: booksData, error: booksError } = await supabase
         .from('books')
         .select(`
@@ -275,14 +273,12 @@ export default function MyBooks() {
         );
       }
     },
-    // SENIOR DEV FIX: Bagong column para sa Chapter Count
     { 
       field: 'chapters_count', 
       headerName: 'Chapters', 
       width: 100, 
       type: 'number',
       renderCell: (params) => {
-        // Binibilang natin kung ilan yung nakuha natin sa query
         const count = params.row.chapters?.length || 0;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>

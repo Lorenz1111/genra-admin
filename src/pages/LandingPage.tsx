@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { 
-  Box, Typography, Button, Container, Dialog, 
-  DialogTitle, DialogContent, DialogActions, IconButton 
-} from '@mui/material';
+import { Box, Typography, Button, Container, Dialog, 
+  DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { Android, Close, MenuBook, Explore, AutoAwesome } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -73,7 +71,7 @@ export default function LandingPage() {
           </Grid>
 
           {/* RIGHT SIDE GRAPHIC / LOGO SHOWCASE */}
-          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid item ={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
              <Box sx={{ 
                 width: { xs: 280, md: 400 }, height: { xs: 280, md: 400 }, 
                 backgroundColor: '#fff', borderRadius: '50%', 

@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  Box, TextField, Button, Typography, Paper, MenuItem,
-  CircularProgress, FormControl, InputLabel, Select, 
-  OutlinedInput, Chip, Snackbar, Alert, IconButton
-} from '@mui/material';
+import { Box, TextField, Button, Typography, Paper, MenuItem, CircularProgress, 
+  FormControl, Select, OutlinedInput, Chip, Snackbar, Alert, IconButton} from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { CloudUpload as UploadIcon, Close as CloseIcon, Image as ImageIcon } from '@mui/icons-material';
 import { supabase } from '../../lib/supabaseClient';

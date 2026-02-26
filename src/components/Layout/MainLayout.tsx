@@ -1,12 +1,9 @@
-import { ReactNode, useState, useEffect } from 'react';
-import { 
-  Box, AppBar, Toolbar, IconButton, Badge, InputBase, 
-  Avatar, Menu, MenuItem, Typography, Paper
-} from '@mui/material';
-import { 
-  Menu as MenuIcon, NotificationsNone, Search as SearchIcon, 
-  ExitToApp, Person, Edit 
-} from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { Box, AppBar, Toolbar, IconButton, Badge, InputBase, 
+  Avatar, Menu, MenuItem, Typography, Paper} from '@mui/material';
+import { Menu as MenuIcon, NotificationsNone, Search as SearchIcon, 
+  ExitToApp, Person, Edit } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';

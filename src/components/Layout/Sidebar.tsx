@@ -1,10 +1,5 @@
-import { 
-  Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, 
-  Box, Tooltip 
-} from '@mui/material';
-import { 
-  Dashboard, MenuBook, RateReview, People, AddCircle, Category 
-} from '@mui/icons-material';
+import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box, Tooltip } from '@mui/material';
+import { Dashboard, MenuBook, RateReview, People, AddCircle, Category } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/genra-logo.png';
