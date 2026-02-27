@@ -20,6 +20,7 @@ export type Database = {
           comment_text: string
           created_at: string | null
           id: string
+          parent_id: string | null
           user_id: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           comment_text: string
           created_at?: string | null
           id?: string
+          parent_id?: string | null
           user_id: string
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           comment_text?: string
           created_at?: string | null
           id?: string
+          parent_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -42,6 +45,13 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "book_comments"
             referencedColumns: ["id"]
           },
           {
@@ -193,6 +203,35 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_votes: {
+        Row: {
+          comment_id: string | null
+          id: string
+          user_id: string | null
+          vote_type: string | null
+        }
+        Insert: {
+          comment_id?: string | null
+          id?: string
+          user_id?: string | null
+          vote_type?: string | null
+        }
+        Update: {
+          comment_id?: string | null
+          id?: string
+          user_id?: string | null
+          vote_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_votes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "book_comments"
             referencedColumns: ["id"]
           },
         ]
@@ -532,23 +571,3 @@ export const Constants = {
     },
   },
 } as const
-
-export type TableRow<T extends keyof Database["public"]["Tables"]> =
-    Database["public"]["Tables"][T]["Row"];
-
-// Specific Types Shortcuts para hindi tayo nagta-type ng mahaba sa components
-export type Profile = TableRow<"profiles">;
-export type Book = TableRow<"books">;
-export type Chapter = TableRow<"chapters">;
-export type Genre = TableRow<"genres">;
-export type BookComment = TableRow<"book_comments">;
-export type BookRating = TableRow<"book_ratings">;
-export type Interaction = TableRow<"interactions">;
-export type ReadingProgress = TableRow<"reading_progress">;
-export type UserLibrary = TableRow<"user_library">;
-
-// Type para sa Book na kasama ang Author info at Genres (Gagamitin natin sa Home/Details)
-export type BookWithDetails = Book & {
-  profiles?: { full_name: string | null; avatar_url: string | null; username: string | null } | null;
-  book_genres?: { genres: { id: string; name: string } | null }[];
-};
