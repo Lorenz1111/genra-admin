@@ -116,6 +116,10 @@ export default function MyBooks() {
       showToast('Please select at least one genre.', 'error');
       return;
     }
+    if (!editBookId) {
+      showToast('Book ID is missing.', 'error');
+      return;
+    }
 
     setEditLoading(true);
     
@@ -147,14 +151,14 @@ export default function MyBooks() {
           description: editDescription.trim(),
           cover_url: finalCoverUrl
         })
-        .eq('id', editBookId);
+        .eq('id', editBookId as string);
 
       if (updateError) throw updateError;
 
-      await supabase.from('book_genres').delete().eq('book_id', editBookId);
+      await supabase.from('book_genres').delete().eq('book_id', editBookId as string);
       
       const genreInserts = editSelectedGenres.map(genreId => ({
-        book_id: editBookId,
+        book_id: editBookId as string,
         genre_id: genreId
       }));
       
@@ -229,8 +233,8 @@ export default function MyBooks() {
       headerName: 'Title & Status', 
       flex: 1, 
       minWidth: 220,
-      renderCell: (params) => {
-        const status = params.row.status as string;
+      renderCell: (params: GridRenderCellParams) => {
+        const status = (params.row.status as string | null) || 'unknown';
         let statusColor = '#64748b';
         if (status === 'approved') statusColor = '#16a34a';
         else if (status === 'rejected') statusColor = '#dc2626';
@@ -253,7 +257,7 @@ export default function MyBooks() {
       headerName: 'Genres', 
       width: 200,
       renderCell: (params: GridRenderCellParams) => {
-        const genres = params.row.book_genres?.map((bg: any) => bg.genres?.name) || [];
+        const genres = (params.row.book_genres?.map((bg: any) => bg.genres?.name).filter(Boolean) as string[]) || [];
         
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, height: '100%' }}>
@@ -278,7 +282,7 @@ export default function MyBooks() {
       headerName: 'Chapters', 
       width: 100, 
       type: 'number',
-      renderCell: (params) => {
+      renderCell: (params: GridRenderCellParams) => {
         const count = params.row.chapters?.length || 0;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
@@ -294,10 +298,10 @@ export default function MyBooks() {
       headerName: 'Views', 
       width: 100, 
       type: 'number',
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
           <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
-            {params.value?.toLocaleString() || 0}
+            {(params.value as number | null)?.toLocaleString() || 0}
           </Typography>
         </Box>
       )

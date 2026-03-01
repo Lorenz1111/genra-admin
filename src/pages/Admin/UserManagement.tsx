@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { 
   Box, Typography, Paper, IconButton, Tooltip, Dialog, 
   DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert,
-  FormControl, InputLabel, Select, MenuItem, Avatar, Chip
-} from '@mui/material';
+  FormControl, InputLabel, Select, MenuItem, Avatar, Chip,} from '@mui/material';
 import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { 
@@ -44,11 +43,15 @@ export default function UserManagement() {
       console.error('Error fetching users:', error);
       showToast('Failed to load users', 'error');
     } else {
-      const formattedData = data.map(user => ({
-        ...user,
-        status: user.status || 'active' 
-      }));
-      setUsers(formattedData);
+      if (data) {
+        const formattedData = (data as any[]).map(user => ({
+          ...user,
+          status: user.status || 'active'
+        }));
+        setUsers(formattedData as Profile[]);
+      } else {
+        setUsers([]);
+      }
     }
     setLoading(false);
   };

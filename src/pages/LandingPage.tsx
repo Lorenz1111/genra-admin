@@ -71,7 +71,7 @@ export default function LandingPage() {
           </Grid>
 
           {/* RIGHT SIDE GRAPHIC / LOGO SHOWCASE */}
-          <Grid item ={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex', justifyContent: 'center' }}>
              <Box sx={{ 
                 width: { xs: 280, md: 400 }, height: { xs: 280, md: 400 }, 
                 backgroundColor: '#fff', borderRadius: '50%', 

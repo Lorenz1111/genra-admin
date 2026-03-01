@@ -51,8 +51,8 @@ export default function ChapterEditor() {
         if (data && !error) {
           setTitle(data.title);
           setContent(data.content);
-          setSequence(data.sequence_number);
-          setIsLocked(data.is_locked);
+          setSequence(data.sequence_number ?? 1);
+          setIsLocked(Boolean(data.is_locked));
         } else {
           showToast('Failed to load chapter details.', 'error');
         }
@@ -65,8 +65,10 @@ export default function ChapterEditor() {
           .limit(1)
           .single();
 
-        if (data) {
+        if (data && typeof data.sequence_number === 'number') {
           setSequence(data.sequence_number + 1);
+        } else {
+          setSequence(1);
         }
       }
       setInitialLoading(false);

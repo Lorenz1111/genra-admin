@@ -46,7 +46,8 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: ReactNode, allow
 
 function App() {
   return (
-    <BrowserRouter>
+    // SENIOR DEV FIX: Idinagdag natin ang basename dito
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         
         {/* ============================== */}
@@ -56,7 +57,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-
         {/* ============================== */}
         {/* ADMIN ROUTES                   */}
         {/* ============================== */}
@@ -64,7 +64,6 @@ function App() {
         <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['admin']}><ReviewCenter /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagement /></ProtectedRoute>} />
         <Route path="/admin/genres" element={<ProtectedRoute allowedRoles={['admin']}><GenreManagement /></ProtectedRoute>} />
-
 
         {/* ============================== */}
         {/* AUTHOR ROUTES                  */}
@@ -75,10 +74,7 @@ function App() {
         <Route path="/author/upload" element={<ProtectedRoute allowedRoles={['author']}><UploadBook /></ProtectedRoute>} />
         <Route path="/author/books/:bookId/chapters" element={<ProtectedRoute allowedRoles={['author']}><ChapterList /></ProtectedRoute>} />
         <Route path="/author/books/:bookId/chapters/new" element={<ProtectedRoute allowedRoles={['author']}><ChapterEditor /></ProtectedRoute>} />
-        
-        {/* SENIOR DEV FIX: Tinanggal ang sobrang '}' at binalot sa ProtectedRoute */}
         <Route path="/author/books/:bookId/chapters/:chapterId/edit" element={<ProtectedRoute allowedRoles={['author']}><ChapterEditor /></ProtectedRoute>} />
-
 
         {/* ============================== */}
         {/* FALLBACK ROUTE                 */}

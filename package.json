@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://Lorenz1111.github.io/genra-admin",
+  "homepage": "https://Lorenz1111.github.io/genra-admin/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Paper, CircularProgress, Avatar, Button } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Avatar, Button } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import { TrendingUp, MenuBook, StarBorder, AddCircleOutline, ListAlt } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -61,8 +62,8 @@ export default function AuthorDashboard() {
       field: 'status', 
       headerName: 'Status', 
       width: 140,
-      renderCell: (params) => {
-        const status = params.value as string;
+      renderCell: (params: GridRenderCellParams) => {
+        const status = (params.value as string | null) || 'unknown';
         let bgColor = '#f1f5f9';
         let textColor = '#64748b';
 
@@ -80,7 +81,7 @@ export default function AuthorDashboard() {
             px: 1, py: 0.5, borderRadius: 1, display: 'inline-block',
             fontSize: '0.65rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5
           }}>
-            {status.replace('_', ' ')}
+            {String(status).replace('_', ' ')}
           </Box>
         );
       }
@@ -90,7 +91,10 @@ export default function AuthorDashboard() {
       field: 'rating', 
       headerName: 'Rating', 
       width: 100,
-      valueFormatter: (params) => params.value ? Number(params.value).toFixed(1) : '0.0'
+      valueFormatter: (params: any) => {
+        const val = params.value ?? 0;
+        return Number(val).toFixed(1);
+      }
     },
   ];
 
