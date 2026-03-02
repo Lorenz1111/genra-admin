@@ -13,14 +13,14 @@ const DRAWER_WIDTH = 260;
 const COLLAPSED_WIDTH = 80;
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
+  // --- SENIOR DEV FIX: Kinuha natin ang signOut galing sa AuthContext ---
+  const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  // SENIOR DEV FIX: State para sa avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Live Clock State
@@ -34,13 +34,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   // Fetch Avatar Logic
   useEffect(() => {
     const fetchAvatar = async () => {
-      // Kung nandiyan na sa profile context, gamitin na agad
       if ((profile as any)?.avatar_url) {
         setAvatarUrl((profile as any).avatar_url);
         return;
       }
       
-      // Kung wala sa context, i-fetch natin manually
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
@@ -63,12 +61,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const handleProfileMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleCloseMenu = () => setAnchorEl(null);
 
+  // --- SENIOR DEV FIX: Inayos ang Logout Flow ---
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    handleCloseMenu(); // Isara muna natin yung dropdown menu para malinis tingnan
+    await signOut(); // Ito na yung galing sa context natin na hindi mag-ti-trigger ng modal!
     navigate('/login');
   };
 
-  // Helper para sa fallback avatar
   const getAvatarSource = () => {
     if (avatarUrl) return avatarUrl;
     const name = profile?.full_name || 'User';
@@ -113,7 +112,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
               <Badge badgeContent={3} color="error"><NotificationsNone /></Badge>
             </IconButton>
 
-            {/* SENIOR DEV FIX: Na-update ang Avatar para gamitin ang source natin! */}
             <IconButton onClick={handleProfileMenu} sx={{ p: 0.5 }}>
               <Avatar 
                 src={getAvatarSource()}

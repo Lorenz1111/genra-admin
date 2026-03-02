@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, Button, TextField, Typography, CircularProgress, 
-  Checkbox, FormControlLabel, Link as MuiLink, Grid, Paper
+  Checkbox, FormControlLabel, Link as MuiLink
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'; // --- DAGDAG: Import ng Icon ---
 
 import logo from '../../assets/genra-logo.png'; 
 
@@ -17,7 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // --- DAGDAG: Load credentials from localStorage pag open ng page ---
+  // --- Load credentials from localStorage pag open ng page ---
   useEffect(() => {
     const savedEmail = localStorage.getItem('genra_email');
     const savedPassword = localStorage.getItem('genra_password');
@@ -55,7 +56,7 @@ export default function Login() {
 
       if (profileError || !profile) throw new Error('Profile not found.');
 
-      // --- DAGDAG: Save or Delete sa localStorage depende sa checkbox ---
+      // --- Save or Delete sa localStorage depende sa checkbox ---
       if (rememberMe) {
         localStorage.setItem('genra_email', email.trim());
         localStorage.setItem('genra_password', password);
@@ -89,6 +90,23 @@ export default function Login() {
       backgroundColor: '#fff' 
     }}>
       
+      {/* --- DAGDAG: BACK BUTTON --- */}
+      <Box sx={{ position: 'absolute', top: 20, left: { xs: 20, md: 40 }, zIndex: 50 }}>
+        <Button 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => navigate('/')}
+          sx={{ 
+            color: '#64748b', 
+            textTransform: 'none', 
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            '&:hover': { color: '#0f172a', backgroundColor: 'transparent' } 
+          }}
+        >
+          Back to Home
+        </Button>
+      </Box>
+
       {/* LEFT SIDE: LOGIN FORM */}
       <Box sx={{ 
         width: { xs: '100%', md: '45%', lg: '40%' }, 
@@ -104,7 +122,7 @@ export default function Login() {
       }}>
         <Box sx={{ width: '100%', maxWidth: 380 }}>
           
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 4 }}>
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 4, mt: 4 }}>
             <img src={logo} alt="GenrA Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
           </Box>
 
