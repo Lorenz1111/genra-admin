@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
-import { Dialog, DialogContent, Typography, Button, Box } from '@mui/material';
+import { Dialog, DialogContent, Typography, Button } from '@mui/material';
 import { ErrorOutline } from '@mui/icons-material';
 
 // Define natin kung ano ang itsura ng User Profile
