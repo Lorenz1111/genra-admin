@@ -171,7 +171,7 @@ export default function ForgotPassword() {
         {/* Header Section */}
         <Box sx={{ width: '100%', maxWidth: 380, alignSelf: 'center', mb: 4 }}>
           <Box sx={{ display: { xs: 'flex', md: 'none' }, mb: 4 }}>
-            <img src={logo} alt="GenrA Logo" style={{ width: 60, height: 60, objectFit: 'contain' }} />
+            <img src={logo} alt="GenrA Logo" draggable={false} style={{ width: 60, height: 60, objectFit: 'contain' }} />
           </Box>
 
           <Typography component="h1" variant="h4" sx={{ fontWeight: '900', color: '#0f172a', mb: 1, letterSpacing: '-0.02em' }}>
@@ -300,7 +300,7 @@ export default function ForgotPassword() {
         flexDirection: 'column', justifyContent: 'center', alignItems: 'center', p: 8
       }}>
         <Box sx={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: 480 }}>
-          <img src={logo} alt="GenrA Logo" style={{ width: 200, height: 200, objectFit: 'contain', marginBottom: 24, filter: 'drop-shadow(0px 10px 20px rgba(0,0,0,0.08))' }} />
+          <img src={logo} alt="GenrA Logo" draggable={false} style={{ width: 200, height: 200, objectFit: 'contain', marginBottom: 24, filter: 'drop-shadow(0px 10px 20px rgba(0,0,0,0.08))' }} />
           <Typography variant="h3" sx={{ fontWeight: '900', color: '#0f172a', mb: 2, letterSpacing: '-0.02em' }}>GenrA Portal</Typography>
           <Typography variant="body1" sx={{ color: '#475569', fontSize: '1.1rem', lineHeight: 1.6 }}>
             The central hub for authors to manage e-books and for administrators to oversee the GenrA reading ecosystem.
