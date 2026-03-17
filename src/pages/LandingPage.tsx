@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Box, Typography, Button, Container, Dialog, 
   DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { Android, Close, MenuBook, Explore, AutoAwesome } from '@mui/icons-material';
+import { Android, Close, MenuBook, Explore, AutoAwesome, InfoOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/genra-logo.png'; 
 
@@ -40,7 +40,7 @@ export default function LandingPage() {
       <Container maxWidth="lg" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: { xs: 8, md: 12 } }}>
         <Grid container spacing={6} alignItems="center">
           
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 5 }}>
             <Typography variant="h2" sx={{ fontWeight: '900', color: '#0f172a', mb: 2, fontSize: { xs: '2.5rem', md: '3.5rem' }, lineHeight: 1.2 }}>
               Your Reading Journey <span className="text-blue-600">Starts Here.</span>
             </Typography>
@@ -48,9 +48,9 @@ export default function LandingPage() {
               Discover personalized e-books, explore thousands of genres, and immerse yourself in stories crafted just for you. Download the GenrA mobile app today.
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+              
               {/* DOWNLOAD APK BUTTON */}
-              {/* TANDAAN: Ilagay ang GenrA.apk file sa loob ng 'public' folder ng web project mo */}
               <Button 
                 component="a" 
                 href="/GenrA.apk" 
@@ -67,21 +67,46 @@ export default function LandingPage() {
               >
                 Download for Android
               </Button>
+
+              {/* SENIOR DEV FIX: EXPO-STYLE INSTALLATION NOTE */}
+              <Box sx={{ 
+                backgroundColor: '#f1f5f9', 
+                border: '1px solid #e2e8f0', 
+                borderRadius: 3, 
+                p: 3, 
+                mt: 1 
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <InfoOutlined sx={{ color: '#475569', fontSize: 20 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#334155' }}>
+                    How to install this build on Android
+                  </Typography>
+                </Box>
+                
+                <Typography variant="body2" sx={{ color: '#475569', mb: 1.5, lineHeight: 1.6 }}>
+                  • On devices running <strong>Android 8.0 (API level 26) and higher</strong>, you must navigate to the <em>Install unknown apps</em> system settings screen to enable app installations from a particular location (i.e. the web browser you are downloading the app from).
+                </Typography>
+                
+                <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
+                  • On devices running <strong>Android 7.1.1 (API level 25) and lower</strong>, you should enable the <em>Unknown sources</em> system setting, found in <strong>Settings &gt; Security</strong> on your device.
+                </Typography>
+              </Box>
+
             </Box>  
           </Grid>
 
           {/* RIGHT SIDE GRAPHIC / LOGO SHOWCASE */}
-          <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
              <Box sx={{ 
-                width: { xs: 280, md: 400 }, height: { xs: 280, md: 400 }, 
+                width: { xs: 280, md: 450 }, height: { xs: 280, md: 450 }, 
                 backgroundColor: '#fff', borderRadius: '50%', 
                 display: 'flex', justifyContent: 'center', alignItems: 'center',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.08)', position: 'relative'
              }}>
                 {/* Decorative Elements */}
-                <Box sx={{ position: 'absolute', top: -20, right: 20, p: 2, backgroundColor: '#dbeafe', borderRadius: '50%' }}><AutoAwesome sx={{ color: '#2563eb' }}/></Box>
-                <Box sx={{ position: 'absolute', bottom: 20, left: -10, p: 2, backgroundColor: '#fef3c7', borderRadius: '50%' }}><MenuBook sx={{ color: '#d97706' }}/></Box>
-                <Box sx={{ position: 'absolute', bottom: -10, right: 40, p: 2, backgroundColor: '#d1fae5', borderRadius: '50%' }}><Explore sx={{ color: '#059669' }}/></Box>
+                <Box sx={{ position: 'absolute', top: -10, right: 30, p: 2, backgroundColor: '#dbeafe', borderRadius: '50%' }}><AutoAwesome sx={{ color: '#2563eb' }}/></Box>
+                <Box sx={{ position: 'absolute', bottom: 30, left: -20, p: 2, backgroundColor: '#fef3c7', borderRadius: '50%' }}><MenuBook sx={{ color: '#d97706' }}/></Box>
+                <Box sx={{ position: 'absolute', bottom: -10, right: 60, p: 2, backgroundColor: '#d1fae5', borderRadius: '50%' }}><Explore sx={{ color: '#059669' }}/></Box>
                 
                 <img src={logo} alt="GenrA App" style={{ width: '60%', height: '60%', objectFit: 'contain' }} />
              </Box>
@@ -122,7 +147,6 @@ export default function LandingPage() {
 
           <Typography variant="h6" gutterBottom color="textPrimary">3. User Rights</Typography>
           <Typography paragraph>You have the right to access, modify, or delete your personal data at any time through the GenrA mobile application settings.</Typography>
-          {/* Pwede mo itong dagdagan bro ng totoong privacy policy niyo */}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPrivacy(false)} variant="contained" sx={{ textTransform: 'none' }}>I Understand</Button>
