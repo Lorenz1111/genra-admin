@@ -9,7 +9,6 @@ import logo from '../assets/genra-logo.png';
 export default function LandingPage() {
   const navigate = useNavigate();
   
-  // States para sa Modals (Privacy & Terms)
   const [openPrivacy, setOpenPrivacy] = useState(false);
   const [openTerms, setOpenTerms] = useState(false);
 
@@ -19,10 +18,16 @@ export default function LandingPage() {
       {/* --- NAVBAR --- */}
       <Box sx={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        px: { xs: 3, md: 8 }, py: 2, backgroundColor: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' 
+        px: { xs: 2, md: 8 }, py: 2, backgroundColor: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' 
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <img src={logo} alt="GenrA Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 } }}>
+          {/* SENIOR DEV FIX: Disabled image dragging */}
+          <img 
+            src={logo} 
+            alt="GenrA Logo" 
+            draggable="false" 
+            style={{ width: 40, height: 40, objectFit: 'contain', userSelect: 'none', WebkitUserDrag: 'none' }} 
+          />
           <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#0f172a', letterSpacing: 1 }}>
             GenrA
           </Typography>
@@ -30,51 +35,61 @@ export default function LandingPage() {
         <Button 
           variant="outlined" 
           onClick={() => navigate('/login')}
-          sx={{ borderRadius: 6, textTransform: 'none', fontWeight: 'bold', borderColor: '#cbd5e1', color: '#475569' }}
+          sx={{ 
+            borderRadius: 6, textTransform: 'none', fontWeight: 'bold', 
+            borderColor: '#cbd5e1', color: '#475569',
+            fontSize: { xs: '0.8rem', md: '0.875rem' }, // Scaled down slightly for mobile
+            px: { xs: 2, md: 3 }
+          }}
         >
           Author / Admin Login
         </Button>
       </Box>
 
       {/* --- HERO SECTION --- */}
-      <Container maxWidth="lg" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: { xs: 8, md: 12 } }}>
-        <Grid container spacing={6} alignItems="center">
+      <Container maxWidth="lg" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: { xs: 6, md: 12 } }}>
+        <Grid container spacing={{ xs: 6, md: 6 }} alignItems="center" direction={{ xs: 'column-reverse', md: 'row' }}>
           
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Typography variant="h2" sx={{ fontWeight: '900', color: '#0f172a', mb: 2, fontSize: { xs: '2.5rem', md: '3.5rem' }, lineHeight: 1.2 }}>
-              Your Reading Journey <span className="text-blue-600">Starts Here.</span>
+          {/* SENIOR DEV FIX: Centered text on mobile (xs), Left aligned on desktop (md) */}
+          <Grid size={{ xs: 12, md: 5 }} sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+            <Typography variant="h2" sx={{ fontWeight: '900', color: '#0f172a', mb: 2, fontSize: { xs: '2.2rem', sm: '3rem', md: '3.5rem' }, lineHeight: 1.2 }}>
+              Your Reading Journey <Box component="span" sx={{ color: '#2563eb', display: 'block' }}>Starts Here.</Box>
             </Typography>
-            <Typography variant="h6" sx={{ color: '#64748b', mb: 4, fontWeight: 'normal', lineHeight: 1.6 }}>
+            <Typography variant="h6" sx={{ color: '#64748b', mb: 4, fontWeight: 'normal', lineHeight: 1.6, fontSize: { xs: '1rem', md: '1.25rem' }, px: { xs: 2, md: 0 } }}>
               Discover personalized e-books, explore thousands of genres, and immerse yourself in stories crafted just for you. Download the GenrA mobile app today.
             </Typography>
             
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+            {/* SENIOR DEV FIX: Centered buttons on mobile, Left on desktop */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: { xs: 'center', md: 'flex-start' } }}>
               
-              {/* DOWNLOAD APK BUTTON */}
               <Button 
                 component="a" 
                 href="/GenrA.apk" 
                 download="GenrA.apk"
                 variant="contained" 
+                draggable="false" 
                 size="large"
                 startIcon={<Android />}
                 sx={{ 
                   py: 1.5, px: 4, borderRadius: 8, backgroundColor: '#2563eb', 
                   textTransform: 'none', fontSize: '1.1rem', fontWeight: 'bold',
                   boxShadow: '0 10px 20px rgba(37, 99, 235, 0.3)',
-                  '&:hover': { backgroundColor: '#1d4ed8' }
+                  '&:hover': { backgroundColor: '#1d4ed8' },
+                  width: { xs: '100%', sm: 'auto' }, // Full width on tiny screens
+                  maxWidth: '300px'
                 }}
               >
                 Download for Android
               </Button>
 
-              {/* SENIOR DEV FIX: EXPO-STYLE INSTALLATION NOTE */}
               <Box sx={{ 
                 backgroundColor: '#f1f5f9', 
                 border: '1px solid #e2e8f0', 
                 borderRadius: 3, 
                 p: 3, 
-                mt: 1 
+                mt: 1,
+                textAlign: 'left', // Keep the note text left-aligned even on mobile for readability
+                width: '100%'
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <InfoOutlined sx={{ color: '#475569', fontSize: 20 }} />
@@ -96,19 +111,25 @@ export default function LandingPage() {
           </Grid>
 
           {/* RIGHT SIDE GRAPHIC / LOGO SHOWCASE */}
-          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
+             {/* SENIOR DEV FIX: Smoother scaling for the circle container */}
              <Box sx={{ 
-                width: { xs: 280, md: 450 }, height: { xs: 280, md: 450 }, 
+                width: { xs: 260, sm: 350, md: 450 }, height: { xs: 260, sm: 350, md: 450 }, 
                 backgroundColor: '#fff', borderRadius: '50%', 
                 display: 'flex', justifyContent: 'center', alignItems: 'center',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.08)', position: 'relative'
              }}>
-                {/* Decorative Elements */}
-                <Box sx={{ position: 'absolute', top: -10, right: 30, p: 2, backgroundColor: '#dbeafe', borderRadius: '50%' }}><AutoAwesome sx={{ color: '#2563eb' }}/></Box>
-                <Box sx={{ position: 'absolute', bottom: 30, left: -20, p: 2, backgroundColor: '#fef3c7', borderRadius: '50%' }}><MenuBook sx={{ color: '#d97706' }}/></Box>
-                <Box sx={{ position: 'absolute', bottom: -10, right: 60, p: 2, backgroundColor: '#d1fae5', borderRadius: '50%' }}><Explore sx={{ color: '#059669' }}/></Box>
+                <Box sx={{ position: 'absolute', top: -10, right: { xs: 10, md: 30 }, p: { xs: 1.5, md: 2 }, backgroundColor: '#dbeafe', borderRadius: '50%' }}><AutoAwesome sx={{ color: '#2563eb', fontSize: { xs: 20, md: 24 } }}/></Box>
+                <Box sx={{ position: 'absolute', bottom: 30, left: { xs: -10, md: -20 }, p: { xs: 1.5, md: 2 }, backgroundColor: '#fef3c7', borderRadius: '50%' }}><MenuBook sx={{ color: '#d97706', fontSize: { xs: 20, md: 24 } }}/></Box>
+                <Box sx={{ position: 'absolute', bottom: -10, right: { xs: 20, md: 60 }, p: { xs: 1.5, md: 2 }, backgroundColor: '#d1fae5', borderRadius: '50%' }}><Explore sx={{ color: '#059669', fontSize: { xs: 20, md: 24 } }}/></Box>
                 
-                <img src={logo} alt="GenrA App" style={{ width: '60%', height: '60%', objectFit: 'contain' }} />
+                {/* SENIOR DEV FIX: Disabled image dragging & highlighting */}
+                <img 
+                  src={logo} 
+                  alt="GenrA App" 
+                  draggable="false" 
+                  style={{ width: '60%', height: '60%', objectFit: 'contain', userSelect: 'none', WebkitUserDrag: 'none' }} 
+                />
              </Box>
           </Grid>
 
@@ -118,10 +139,10 @@ export default function LandingPage() {
       {/* --- FOOTER --- */}
       <Box sx={{ backgroundColor: '#0f172a', py: 4, mt: 'auto' }}>
         <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+          <Typography variant="body2" sx={{ color: '#94a3b8', textAlign: 'center' }}>
             © {new Date().getFullYear()} GenrA. All rights reserved.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 3 }}>
+          <Box sx={{ display: 'flex', gap: { xs: 2, md: 3 }, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Button variant="text" onClick={() => setOpenPrivacy(true)} sx={{ color: '#cbd5e1', textTransform: 'none', minWidth: 0, p: 0 }}>
               Privacy Policy
             </Button>
