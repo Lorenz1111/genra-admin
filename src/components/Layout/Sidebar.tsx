@@ -1,4 +1,4 @@
-import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box, Tooltip } from '@mui/material';
+import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box, Tooltip, Typography } from '@mui/material';
 import { Dashboard, MenuBook, RateReview, People, AddCircle, Category } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -29,14 +29,28 @@ export default function Sidebar({ drawerWidth, collapsedWidth, mobileOpen, isCol
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       
-      {/* 1. UPPER LEFT: Logo Only */}
+      {/* SENIOR DEV FIX: Dynamic alignment and padding for the Logo area */}
       <Box sx={{ 
-        p: 2, 
-        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+        px: isCollapsed ? 2 : 3, 
+        display: 'flex', alignItems: 'center', 
+        justifyContent: isCollapsed ? 'center' : 'flex-start', 
         height: '70px', borderBottom: '1px solid #e2e8f0',
-        flexShrink: 0
+        flexShrink: 0,
+        transition: 'padding 0.3s ease, justify-content 0.3s ease'
       }}>
         <img src={logo} alt="GenrA Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+        
+        {/* Magpapakita ang Text kapag open ang sidebar */}
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 'bold', color: '#0f172a', letterSpacing: 1, ml: 1.5,
+            opacity: isCollapsed ? 0 : 1, display: isCollapsed ? 'none' : 'block',
+            transition: 'opacity 0.2s ease'
+          }}
+        >
+          GenrA
+        </Typography>
       </Box>
       
       {/* 2. MIDDLE: Navigation Links */}
@@ -75,7 +89,6 @@ export default function Sidebar({ drawerWidth, collapsedWidth, mobileOpen, isCol
                     {item.icon}
                   </ListItemIcon>
                   
-                  {/* SENIOR DEV FIX: Smooth text hiding para hindi sumabog ang UI kapag nag-collapse */}
                   <ListItemText 
                     primary={item.text} 
                     sx={{ 

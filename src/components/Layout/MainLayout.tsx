@@ -13,17 +13,13 @@ const DRAWER_WIDTH = 260;
 const COLLAPSED_WIDTH = 80;
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  // --- SENIOR DEV FIX: Kinuha natin ang signOut galing sa AuthContext ---
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  // Live Clock State
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -31,7 +27,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Avatar Logic
   useEffect(() => {
     const fetchAvatar = async () => {
       if ((profile as any)?.avatar_url) {
@@ -61,10 +56,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const handleProfileMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleCloseMenu = () => setAnchorEl(null);
 
-  // --- SENIOR DEV FIX: Inayos ang Logout Flow ---
   const handleLogout = async () => {
-    handleCloseMenu(); // Isara muna natin yung dropdown menu para malinis tingnan
-    await signOut(); // Ito na yung galing sa context natin na hindi mag-ti-trigger ng modal!
+    handleCloseMenu(); 
+    await signOut(); 
     navigate('/login');
   };
 
@@ -80,15 +74,18 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         position="fixed"
         elevation={0}
         sx={{
-          width: { md: `calc(100% - ${isCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH}px)` },
+          // SENIOR DEV FIX: Explicitly set 100% width on mobile to prevent layout collapse
+          width: { xs: '100%', md: `calc(100% - ${isCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH}px)` },
           ml: { md: `${isCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH}px` },
           backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0',
           transition: 'width 0.3s ease, margin 0.3s ease',
           zIndex: (theme) => theme.zIndex.drawer - 1,
         }}
       >
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: '70px !important', px: { xs: 2, md: 4 } }}>
+        {/* SENIOR DEV FIX: Tinanggal ang space-between para ma-control nang mabuti ng flexGrow ang layout */}
+        <Toolbar sx={{ display: 'flex', minHeight: '70px !important', px: { xs: 2, md: 4 } }}>
           
+          {/* LEFT BOX */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton onClick={handleDrawerToggle} sx={{ color: '#64748b', display: { md: 'none' } }}>
               <MenuIcon />
@@ -102,11 +99,16 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             </Box>
           </Box>
 
-          <Paper elevation={0} sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', width: 350, backgroundColor: '#f1f5f9', borderRadius: 8, px: 2, py: 0.5, border: '1px solid transparent', transition: 'border 0.2s ease', '&:hover': { borderColor: '#cbd5e1' } }}>
-            <SearchIcon sx={{ color: '#94a3b8', mr: 1, fontSize: 20 }} />
-            <InputBase placeholder="Search books, authors..." sx={{ ml: 1, flex: 1, fontSize: '0.9rem', color: '#0f172a' }} />
-          </Paper>
+          {/* MIDDLE BOX: SENIOR DEV FIX (Flex Spacer) 
+              Tumutulak ito sa kanan para kahit mag-open ng drawer, hindi gagalaw ang Avatar */}
+          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+            <Paper elevation={0} sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', width: 350, backgroundColor: '#f1f5f9', borderRadius: 8, px: 2, py: 0.5, border: '1px solid transparent', transition: 'border 0.2s ease', '&:hover': { borderColor: '#cbd5e1' } }}>
+              <SearchIcon sx={{ color: '#94a3b8', mr: 1, fontSize: 20 }} />
+              <InputBase placeholder="Search books, authors..." sx={{ ml: 1, flex: 1, fontSize: '0.9rem', color: '#0f172a' }} />
+            </Paper>
+          </Box>
 
+          {/* RIGHT BOX (Profile Avatar & Notifications) */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <IconButton sx={{ color: '#64748b' }}>
               <Badge badgeContent={3} color="error"><NotificationsNone /></Badge>
@@ -133,6 +135,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
               <MenuItem onClick={handleLogout} sx={{ py: 1, color: '#dc2626', fontWeight: 500, fontSize: '0.9rem' }}><ExitToApp sx={{ mr: 2, fontSize: 18 }} /> Sign Out</MenuItem>
             </Menu>
           </Box>
+
         </Toolbar>
       </AppBar>
 
