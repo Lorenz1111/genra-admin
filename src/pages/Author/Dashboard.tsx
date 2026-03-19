@@ -195,7 +195,7 @@ export default function AuthorDashboard() {
 
   return (
     // SD FIX: Nilagyan ko ng px (padding X) para may space sa gilid kapag mobile, hindi dikit sa screen.
-    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: { xs: 4, md: 8 }, px: { xs: 2, md: 0 } }}>
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: { xs: 4, md: 8 }, px: { xs: 2, md: 0 }, overflowX: 'hidden' }}>
       
       {/* --- WELCOME HEADER & QUICK ACTIONS --- */}
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: { xs: 3, md: 5 }, gap: 3 }}>
@@ -268,55 +268,68 @@ export default function AuthorDashboard() {
         Top Performing Books
       </Typography>
       
-      {/* SD FIX: Ang overflow: 'hidden' dito sa Paper ang pipigil sa page na mag-scroll. Ang DataGrid sa loob ang magkakaroon ng scrollbar. */}
-      <Paper 
-        elevation={0} 
+      <Box
         sx={{ 
-          height: 650, width: '100%', borderRadius: 3, 
-          border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-          overflow: 'hidden' 
+          width: '100%',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        <DataGrid
-          rows={topBooks}
-          columns={columns}
-          loading={loading}
-          disableRowSelectionOnClick
-          rowHeight={65} 
-          
-          initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
-          pageSizeOptions={[5, 10, 20]}
-          slots={{
-            loadingOverlay: () => (
-              <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
-                  <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5, minWidth: 800 }}>
-                    <Skeleton variant="rectangular" width={40} height={56} sx={{ borderRadius: 1 }} />
-                    <Box sx={{ flex: 1, minWidth: 200 }}>
-                      <Skeleton variant="text" width="70%" height={24} />
-                      <Skeleton variant="text" width="40%" height={16} />
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            height: 650,
+            width: { xs: 860, md: '100%' },
+            minWidth: { xs: 860, md: 0 },
+            borderRadius: 3, 
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            overflow: 'hidden' 
+          }}
+        >
+          <DataGrid
+            rows={topBooks}
+            columns={columns}
+            loading={loading}
+            disableRowSelectionOnClick
+            rowHeight={65} 
+            
+            initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+            pageSizeOptions={[5, 10, 20]}
+            slots={{
+              loadingOverlay: () => (
+                <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
+                    <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5, minWidth: 860 }}>
+                      <Skeleton variant="rectangular" width={40} height={56} sx={{ borderRadius: 1 }} />
+                      <Box sx={{ flex: 1, minWidth: 200 }}>
+                        <Skeleton variant="text" width="70%" height={24} />
+                        <Skeleton variant="text" width="40%" height={16} />
+                      </Box>
+                      <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1.5 }} />
                     </Box>
-                    <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1.5 }} />
-                  </Box>
-                ))}
-              </Box>
-            ),
-            noRowsOverlay: () => (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
-                <LibraryBooks sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#64748b' }}>No analytics yet</Typography>
-                <Typography variant="body2" sx={{ textAlign: 'center', px: 2 }}>Publish a book to start tracking views.</Typography>
-              </Box>
-            )
-          }}
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' },
-            '& .MuiDataGrid-cell': { borderColor: '#f1f5f9' },
-            '& .MuiTablePagination-root': { color: '#475569', borderTop: '1px solid #e2e8f0' }
-          }}
-        />
-      </Paper>
+                  ))}
+                </Box>
+              ),
+              noRowsOverlay: () => (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+                  <LibraryBooks sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#64748b' }}>No analytics yet</Typography>
+                  <Typography variant="body2" sx={{ textAlign: 'center', px: 2 }}>Publish a book to start tracking views.</Typography>
+                </Box>
+              )
+            }}
+            sx={{
+              border: 'none',
+              minWidth: { xs: 860, md: 0 },
+              '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' },
+              '& .MuiDataGrid-cell': { borderColor: '#f1f5f9' },
+              '& .MuiTablePagination-root': { color: '#475569', borderTop: '1px solid #e2e8f0' }
+            }}
+          />
+        </Paper>
+      </Box>
     </Box>
   );
 }
