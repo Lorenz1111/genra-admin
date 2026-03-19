@@ -21,6 +21,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Custom Error State natin
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [attempts, setAttempts] = useState(0);
@@ -57,6 +59,7 @@ export default function Login() {
     checkExistingSession();
   }, [navigate]);
 
+  // Load saved credentials & lockout state
   useEffect(() => {
     const savedEmail = localStorage.getItem('genra_email');
     const savedPassword = localStorage.getItem('genra_password');
@@ -78,6 +81,7 @@ export default function Login() {
     }
   }, []);
 
+  // Countdown logic kapag na-lockout
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (lockoutTime) {
@@ -112,7 +116,10 @@ export default function Login() {
       setLockoutTime(unlockTime);
       localStorage.setItem('login_lockout_time', unlockTime.toString());
       setAuthError(`Too many failed attempts. Please wait 60 seconds.`);
-    } else setAuthError(`Invalid email or password. (${newAttempts}/${MAX_ATTEMPTS} attempts)`);
+    } else {
+      // SD FIX: Ibinabalik natin dito ang X/5 attempts display!
+      setAuthError(`Invalid email or password. (${newAttempts}/${MAX_ATTEMPTS} attempts)`);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -134,6 +141,8 @@ export default function Login() {
       });
 
       if (signInError) throw new Error("Invalid email or password.");
+      
+      // Kung success, reset lahat ng penalty
       resetAttempts();
 
       if (rememberMe) {
@@ -144,7 +153,7 @@ export default function Login() {
         localStorage.removeItem('genra_password');
       }
 
-      // Check role and navigate directly!
+      // Check role and navigate directly
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
@@ -164,8 +173,10 @@ export default function Login() {
       }
 
     } catch (err: any) {
+      // Kung nag-fail sa validation or password check, dagdag attempt
       handleFailedAttempt();
-      setAuthError(err.message);
+      // SD FIX: Ang error message na manggagaling sa handleFailedAttempt() ang ididisplay natin,
+      // hindi yung default error ng Supabase, para makita yung (X/5 attempts)
       setLoading(false);
     }
   };
@@ -202,15 +213,19 @@ export default function Login() {
           <Typography variant="body2" sx={{ color: '#64748b', mb: 4, fontSize: '0.95rem' }}>Please enter your details to access the portal.</Typography>
 
           {isLockedOut && <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 'bold' }}>Too many failed attempts. Try again in {countdown} seconds.</Alert>}
+          
+          {/* SD FIX: Dito lalabas yung "Invalid email or password. (X/5 attempts)" */}
           {authError && !isLockedOut && <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 'bold', lineHeight: 1.4 }}>{authError}</Alert>}
 
           <Box component="form" onSubmit={handleLogin} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <TextField label="Email Address" variant="outlined" fullWidth value={email} onChange={(e) => { setEmail(e.target.value); if (authError && !isLockedOut) setAuthError(null); }} disabled={isLockedOut || loading} />
             <TextField label="Password" type="password" variant="outlined" fullWidth value={password} onChange={(e) => { setPassword(e.target.value); if (authError && !isLockedOut) setAuthError(null); }} disabled={isLockedOut || loading} />
+            
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: -1 }}>
               <FormControlLabel control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} color="primary" size="small" disabled={isLockedOut} />} label={<Typography variant="body2" sx={{ color: '#475569', fontWeight: 500 }}>Remember me</Typography>} />
               <MuiLink component="button" type="button" variant="body2" underline="hover" sx={{ color: isLockedOut ? '#94a3b8' : '#2563eb', fontWeight: 600 }} onClick={() => !isLockedOut && navigate('/forgot-password')} disabled={isLockedOut}>Forgot password?</MuiLink>
             </Box>
+
             <Button type="submit" variant="contained" size="large" disableElevation disabled={loading || isLockedOut} sx={{ mt: 1, py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontSize: '1rem', fontWeight: 'bold', '&:hover': { backgroundColor: '#1d4ed8' }, '&.Mui-disabled': { backgroundColor: isLockedOut ? '#cbd5e1' : '#93c5fd', color: '#fff' } }}>
               {loading ? <CircularProgress size={24} color="inherit" /> : (isLockedOut ? `Locked (${countdown}s)` : 'Sign In')}
             </Button>
