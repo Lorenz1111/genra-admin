@@ -26,7 +26,7 @@ export default function LandingPage() {
             src={logo} 
             alt="GenrA Logo" 
             draggable="false" 
-            style={{ width: 40, height: 40, objectFit: 'contain', userSelect: 'none', WebkitUserDrag: 'none' }} 
+            style={{ width: 40, height: 40, objectFit: 'contain', userSelect: 'none' }} 
           />
           <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#0f172a', letterSpacing: 1 }}>
             GenrA
@@ -128,7 +128,7 @@ export default function LandingPage() {
                   src={logo} 
                   alt="GenrA App" 
                   draggable="false" 
-                  style={{ width: '60%', height: '60%', objectFit: 'contain', userSelect: 'none', WebkitUserDrag: 'none' }} 
+                  style={{ width: '60%', height: '60%', objectFit: 'contain', userSelect: 'none' }} 
                 />
              </Box>
           </Grid>
