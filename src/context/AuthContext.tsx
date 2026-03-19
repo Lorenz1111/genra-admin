@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import type { Session } from '@supabase/supabase-js';
+import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { Dialog, DialogContent, Typography, Button } from '@mui/material';
 import { ErrorOutline, Devices } from '@mui/icons-material'; // SD Fix: Added Devices icon
 
@@ -33,24 +33,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [showDeviceConflictModal, setShowDeviceConflictModal] = useState(false); // SD Logic
   
   const isManualSignOut = useRef(false); 
+  const isHandlingDeviceConflict = useRef(false);
   const hadActiveSession = useRef(false);
+  const sessionChannelRef = useRef<RealtimeChannel | null>(null);
+  const sessionWatchCleanupRef = useRef<(() => void) | null>(null);
+
+  const cleanupRealtimeSessionListener = () => {
+    if (sessionChannelRef.current) {
+      supabase.removeChannel(sessionChannelRef.current);
+      sessionChannelRef.current = null;
+    }
+  };
+
+  const cleanupSessionWatchers = () => {
+    cleanupRealtimeSessionListener();
+    sessionWatchCleanupRef.current?.();
+    sessionWatchCleanupRef.current = null;
+  };
+
+  const generateAndSaveDeviceToken = async (userId: string) => {
+    const deviceToken = crypto.randomUUID();
+    localStorage.setItem('device_token', deviceToken);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ session_token: deviceToken })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error saving device token:', error);
+    }
+  };
+
+  const handleDeviceConflictLogout = async () => {
+    if (isHandlingDeviceConflict.current) return;
+
+    isHandlingDeviceConflict.current = true;
+    isManualSignOut.current = true; // Set true para hindi lumabas ang generic expiry modal
+    cleanupSessionWatchers();
+    localStorage.removeItem('device_token');
+    await supabase.auth.signOut();
+    setProfile(null);
+    setSession(null);
+    setLoading(false);
+    setShowDeviceConflictModal(true); // Ilabas yung custom Single Device modal
+    isHandlingDeviceConflict.current = false;
+  };
+
+  const validateCurrentSessionToken = async (userId: string) => {
+    const currentLocalToken = localStorage.getItem('device_token');
+    if (!currentLocalToken || isHandlingDeviceConflict.current) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('session_token')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error validating session token:', error);
+      return;
+    }
+
+    if (data?.session_token && data.session_token !== currentLocalToken) {
+      await handleDeviceConflictLogout();
+    }
+  };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       hadActiveSession.current = Boolean(session);
       if (session) {
+        if (!localStorage.getItem('device_token')) {
+          await generateAndSaveDeviceToken(session.user.id);
+        }
         fetchProfile(session.user.id);
-        setupRealtimeSessionListener(session.user.id); // SD Init Listener
+        setupSessionWatchers(session.user.id);
       } else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(session);
         if (session) {
+          if (event === 'SIGNED_IN' || !localStorage.getItem('device_token')) {
+            await generateAndSaveDeviceToken(session.user.id);
+          }
           fetchProfile(session.user.id);
-          setupRealtimeSessionListener(session.user.id);
+          setupSessionWatchers(session.user.id);
         }
         hadActiveSession.current = Boolean(session);
         isManualSignOut.current = false; 
@@ -59,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setSession(null);
         setLoading(false);
+        cleanupSessionWatchers();
 
         if (hadActiveSession.current && !isManualSignOut.current) {
           setShowExpiryModal(true);
@@ -67,13 +139,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cleanupSessionWatchers();
+      subscription.unsubscribe();
+    };
   }, []);
 
   // --- SD FEATURE: Realtime Device Conflict Listener ---
-  const setupRealtimeSessionListener = (userId: string) => {
-    // Aabangan natin yung live changes sa mismong row mo sa profiles
-    const channel = supabase.channel('custom-session-channel')
+  const setupSessionWatchers = (userId: string) => {
+    cleanupSessionWatchers();
+
+    sessionChannelRef.current = supabase.channel(`session-limit-${userId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
@@ -89,15 +165,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  };
+    const validateSession = () => {
+      void validateCurrentSessionToken(userId);
+    };
 
-  const handleDeviceConflictLogout = async () => {
-    isManualSignOut.current = true; // Set true para hindi lumabas ang generic expiry modal
-    await supabase.auth.signOut();
-    setProfile(null);
-    setSession(null);
-    setShowDeviceConflictModal(true); // Ilabas yung custom Single Device modal
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        validateSession();
+      }
+    };
+
+    const intervalId = window.setInterval(validateSession, 30000);
+
+    window.addEventListener('focus', validateSession);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    sessionWatchCleanupRef.current = () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', validateSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+
+    validateSession();
   };
 
   const fetchProfile = async (userId: string) => {
@@ -121,6 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isManualSignOut.current = true; 
     hadActiveSession.current = false;
     setShowExpiryModal(false);
+    cleanupSessionWatchers();
+    localStorage.removeItem('device_token');
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
@@ -129,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleCloseModals = () => {
     setShowExpiryModal(false);
     setShowDeviceConflictModal(false);
-    window.location.replace('/login');
+    window.location.replace(new URL(`${import.meta.env.BASE_URL}login`, window.location.origin).toString());
   };
 
   const value = {

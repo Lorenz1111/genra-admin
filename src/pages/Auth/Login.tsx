@@ -27,13 +27,6 @@ export default function Login() {
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
 
-  // SD Logic: Gagawa ng unique token per device login
-  const generateAndSaveDeviceToken = async (userId: string) => {
-    const deviceToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    localStorage.setItem('device_token', deviceToken);
-    await supabase.from('profiles').update({ session_token: deviceToken }).eq('id', userId);
-  };
-
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
@@ -49,11 +42,6 @@ export default function Login() {
           setAuthError('Error fetching profile. Please contact support.');
           setLoading(false);
           return;
-        }
-
-        // SD Logic: I-update ang device token para sa OAuth Logins (Google/Facebook)
-        if (event === 'SIGNED_IN') {
-          await generateAndSaveDeviceToken(session.user.id);
         }
 
         if (profile.role === 'admin') {
@@ -142,15 +130,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (signInError) throw new Error("Invalid email or password.");
-
-      // SD Logic: Generate Token para sa Email Login
-      await generateAndSaveDeviceToken(authData.user.id);
       resetAttempts();
 
       if (rememberMe) {
