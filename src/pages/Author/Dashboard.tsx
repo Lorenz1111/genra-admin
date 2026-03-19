@@ -14,9 +14,7 @@ export default function AuthorDashboard() {
   const { session, profile } = useAuth(); 
   const navigate = useNavigate();
   
-  // --- SD FEATURE: Mobile Detection ---
   const theme = useTheme();
-  // Kung ang screen size ay 'sm' pababa (mobile phones), magiging true ito
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); 
   
   const [loading, setLoading] = useState(true);
@@ -68,14 +66,14 @@ export default function AuthorDashboard() {
     { 
       field: 'cover_url', 
       headerName: 'Cover', 
-      width: 60, // Pinaliit ko konti para mas fit sa mobile
+      width: 70, // SD Fix: Naka-fix ang width para hindi lumiit
       sortable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
           <img 
             src={params.value as string || 'https://via.placeholder.com/50'} 
             alt="cover" 
-            style={{ width: 35, height: 50, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+            style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
           />
         </Box>
       )
@@ -84,7 +82,7 @@ export default function AuthorDashboard() {
       field: 'title', 
       headerName: 'Book Title', 
       flex: 1, 
-      minWidth: 150, // Pinaliit ang minWidth para mag-adjust sa phone
+      minWidth: 200, // SD Fix: Hindi pwedeng lumiit sa 200px para mabasa pa rin
       renderCell: (params) => (
         <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
           <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2, whiteSpace: 'normal', wordWrap: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -96,11 +94,11 @@ export default function AuthorDashboard() {
     { 
       field: 'genre', 
       headerName: 'Genres', 
-      width: 150,
+      width: 160,
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         const genres = (params.row.book_genres?.map((bg: any) => bg.genres?.name).filter(Boolean) as string[]) || [];
-        const displayGenres = genres.slice(0, 1); // 1 na lang muna ipapakita sa table para di siksik
+        const displayGenres = genres.slice(0, 1); 
         const extraGenres = genres.slice(1);
 
         return (
@@ -126,7 +124,7 @@ export default function AuthorDashboard() {
     { 
       field: 'status', 
       headerName: 'Status', 
-      width: 110,
+      width: 120,
       renderCell: (params: GridRenderCellParams) => {
         const status = (params.value as string | null) || 'unknown';
         
@@ -146,14 +144,7 @@ export default function AuthorDashboard() {
             <Chip 
               label={String(status).replace('_', ' ')}
               size="small"
-              sx={{ 
-                backgroundColor: bgColor, 
-                color: textColor, 
-                fontWeight: 'bold', 
-                textTransform: 'capitalize', 
-                borderRadius: 1.5, 
-                fontSize: '0.65rem' 
-              }} 
+              sx={{ backgroundColor: bgColor, color: textColor, fontWeight: 'bold', textTransform: 'capitalize', borderRadius: 1.5, fontSize: '0.65rem' }} 
             />
           </Box>
         );
@@ -164,9 +155,7 @@ export default function AuthorDashboard() {
       headerName: 'Uploaded',
       width: 100,
       renderCell: (params) => {
-        const date = params.value ? new Date(params.value as string).toLocaleDateString('en-US', {
-          month: 'short', day: 'numeric' // Tinanggal ko ang year para mas maikli
-        }) : '-';
+        const date = params.value ? new Date(params.value as string).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
             <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500, fontSize: '0.8rem' }}>
@@ -179,7 +168,7 @@ export default function AuthorDashboard() {
     { 
       field: 'views_count', 
       headerName: 'Views', 
-      width: 70, 
+      width: 80, 
       type: 'number',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
@@ -192,10 +181,10 @@ export default function AuthorDashboard() {
     { 
       field: 'rating', 
       headerName: 'Rates', 
-      width: 70,
+      width: 80,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0.5 }}>
-          <StarBorder sx={{ fontSize: 14, color: '#f59e0b' }} />
+          <StarBorder sx={{ fontSize: 16, color: '#f59e0b' }} />
           <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.85rem' }}>
             {Number(params.value ?? 0).toFixed(1)}
           </Typography>
@@ -205,8 +194,8 @@ export default function AuthorDashboard() {
   ];
 
   return (
-    // Tinanggal ko yung horizontal margin/padding na malalaki sa mobile para sagad sa gilid
-    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: { xs: 4, md: 8 } }}>
+    // SD FIX: Nilagyan ko ng px (padding X) para may space sa gilid kapag mobile, hindi dikit sa screen.
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: { xs: 4, md: 8 }, px: { xs: 2, md: 0 } }}>
       
       {/* --- WELCOME HEADER & QUICK ACTIONS --- */}
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: { xs: 3, md: 5 }, gap: 3 }}>
@@ -224,7 +213,6 @@ export default function AuthorDashboard() {
           </Box>
         </Box>
 
-        {/* Gawing full width ang buttons sa mobile */}
         <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', md: 'auto' } }}>
           <Button 
             fullWidth={isMobile}
@@ -280,12 +268,13 @@ export default function AuthorDashboard() {
         Top Performing Books
       </Typography>
       
+      {/* SD FIX: Ang overflow: 'hidden' dito sa Paper ang pipigil sa page na mag-scroll. Ang DataGrid sa loob ang magkakaroon ng scrollbar. */}
       <Paper 
         elevation={0} 
         sx={{ 
           height: 650, width: '100%', borderRadius: 3, 
           border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-          overflow: 'hidden'
+          overflow: 'hidden' 
         }}
       >
         <DataGrid
@@ -295,26 +284,19 @@ export default function AuthorDashboard() {
           disableRowSelectionOnClick
           rowHeight={65} 
           
-          // --- SD MAGIC: DITO NANGYAYARI ANG RESPONSIVE COLUMNS ---
-          columnVisibilityModel={{
-            genre: !isMobile, // Itatago ang Genre sa cellphone
-            created_at: !isMobile, // Itatago ang Date sa cellphone
-            rating: !isMobile, // Itatago ang Rating sa cellphone
-          }}
-
           initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
           pageSizeOptions={[5, 10, 20]}
           slots={{
             loadingOverlay: () => (
-              <Box sx={{ p: 2 }}>
+              <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
-                  <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5 }}>
-                    <Skeleton variant="rectangular" width={35} height={50} sx={{ borderRadius: 1 }} />
-                    <Box sx={{ flex: 1 }}>
+                  <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5, minWidth: 800 }}>
+                    <Skeleton variant="rectangular" width={40} height={56} sx={{ borderRadius: 1 }} />
+                    <Box sx={{ flex: 1, minWidth: 200 }}>
                       <Skeleton variant="text" width="70%" height={24} />
                       <Skeleton variant="text" width="40%" height={16} />
                     </Box>
-                    <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 1.5 }} />
+                    <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1.5 }} />
                   </Box>
                 ))}
               </Box>
@@ -339,7 +321,6 @@ export default function AuthorDashboard() {
   );
 }
 
-// Helper Component for Stat Cards
 const StatCard = ({ title, value, icon, color, bgColor }: any) => (
   <Paper 
     elevation={0} 
