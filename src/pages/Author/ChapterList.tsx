@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Box, Typography, Paper, Button, IconButton, Tooltip, 
-  Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert
+  Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert,
+  Skeleton, TextField
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -15,29 +16,56 @@ import type { Database } from '../../types/supabase';
 
 type Chapter = Database['public']['Tables']['chapters']['Row'];
 
+const DELETE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+const LOCK_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+const formatDisplayDate = (value: string | null | undefined) => {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+const getWindowEnd = (value: string | null | undefined, durationMs: number) => {
+  if (!value) return null;
+  return new Date(value).getTime() + durationMs;
+};
+
 export default function ChapterList() {
   const { bookId } = useParams(); 
   const navigate = useNavigate();
   
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [bookTitle, setBookTitle] = useState('');
+  const [bookCreatedAt, setBookCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Modals & Toasts
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, id: string, title: string } | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [toast, setToast] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+  const showTableLoader = loading && chapters.length === 0;
+
+  const lockWindowEndsAt = getWindowEnd(bookCreatedAt, LOCK_WINDOW_MS);
+  const lockWindowExpired = lockWindowEndsAt !== null && Date.now() > lockWindowEndsAt;
 
   useEffect(() => {
     const fetchData = async () => {
       if (!bookId) return;
+      setLoading(true);
 
       const { data: book } = await supabase
         .from('books')
-        .select('title')
+        .select('title, created_at')
         .eq('id', bookId)
         .single();
       
-      if (book) setBookTitle(book.title);
+      if (book) {
+        setBookTitle(book.title);
+        setBookCreatedAt(book.created_at || null);
+      }
 
       const { data: chapterData } = await supabase
         .from('chapters')
@@ -45,7 +73,26 @@ export default function ChapterList() {
         .eq('book_id', bookId)
         .order('sequence_number', { ascending: true });
 
-      if (chapterData) setChapters(chapterData);
+      if (chapterData) {
+        let nextChapters = chapterData;
+        const shouldAutoUnlock = book?.created_at && Date.now() > new Date(book.created_at).getTime() + LOCK_WINDOW_MS;
+
+        if (shouldAutoUnlock && chapterData.some((chapter) => chapter.is_locked)) {
+          const { error: unlockError } = await supabase
+            .from('chapters')
+            .update({ is_locked: false })
+            .eq('book_id', bookId)
+            .eq('is_locked', true);
+
+          if (unlockError) {
+            console.error('Error auto-unlocking chapters:', unlockError);
+          } else {
+            nextChapters = chapterData.map((chapter) => ({ ...chapter, is_locked: false }));
+          }
+        }
+
+        setChapters(nextChapters);
+      }
       setLoading(false);
     };
 
@@ -54,6 +101,26 @@ export default function ChapterList() {
 
   const showToast = (message: string, severity: 'success' | 'error') => {
     setToast({ open: true, message, severity });
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialog(null);
+    setDeleteConfirmationText('');
+  };
+
+  const isDeleteLocked = (chapter: Chapter) => {
+    if (!chapter.created_at) return false;
+    return Date.now() > new Date(chapter.created_at).getTime() + DELETE_WINDOW_MS;
+  };
+
+  const getDeleteTooltip = (chapter: Chapter) => {
+    if (!chapter.created_at) return 'Delete Chapter';
+    const deleteDeadline = new Date(new Date(chapter.created_at).getTime() + DELETE_WINDOW_MS);
+    if (isDeleteLocked(chapter)) {
+      return `Delete disabled after ${deleteDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+
+    return `Delete available until ${deleteDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   };
 
   const handleDeleteChapter = async () => {
@@ -70,7 +137,7 @@ export default function ChapterList() {
       setChapters(prev => prev.filter(c => c.id !== deleteDialog.id));
       showToast('Chapter deleted successfully!', 'success');
     }
-    setDeleteDialog(null);
+    handleCloseDeleteDialog();
   };
 
   const columns: GridColDef[] = [
@@ -100,7 +167,7 @@ export default function ChapterList() {
       headerName: 'Access / Status', 
       width: 180,
       renderCell: (params) => {
-        const isLocked = params.value as boolean;
+        const isLocked = Boolean(params.value) && !lockWindowExpired;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
             <Chip 
@@ -120,33 +187,52 @@ export default function ChapterList() {
       }
     },
     {
+      field: 'created_at',
+      headerName: 'Date Published',
+      width: 140,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>
+            {formatDisplayDate(params.value as string | null)}
+          </Typography>
+        </Box>
+      )
+    },
+    {
       field: 'actions',
       headerName: 'Actions',
       width: 140,
       sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Tooltip title="Edit Chapter" arrow>
-            {/* SENIOR DEV FIX: Dito papasok ang pag-navigate papunta sa Edit Route */}
-            <IconButton 
-              size="small"
-              onClick={() => navigate(`/author/books/${bookId}/chapters/${params.row.id}/edit`)} 
-              sx={{ backgroundColor: '#eff6ff', color: '#2563eb', '&:hover': { backgroundColor: '#dbeafe' } }}
-            >
-              <Edit fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Chapter" arrow>
-            <IconButton 
-              size="small"
-              onClick={() => setDeleteDialog({ open: true, id: params.row.id, title: params.row.title })}
-              sx={{ backgroundColor: '#fef2f2', color: '#dc2626', '&:hover': { backgroundColor: '#fee2e2' } }}
-            >
-              <Delete fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        const chapter = params.row as Chapter;
+        const deleteDisabled = isDeleteLocked(chapter);
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+            <Tooltip title="Edit Chapter" arrow>
+              <IconButton 
+                size="small"
+                onClick={() => navigate(`/author/books/${bookId}/chapters/${params.row.id}/edit`)} 
+                sx={{ backgroundColor: '#eff6ff', color: '#2563eb', '&:hover': { backgroundColor: '#dbeafe' } }}
+              >
+                <Edit fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={getDeleteTooltip(chapter)} arrow>
+              <span>
+                <IconButton 
+                  size="small"
+                  disabled={deleteDisabled}
+                  onClick={() => setDeleteDialog({ open: true, id: params.row.id, title: params.row.title })}
+                  sx={{ backgroundColor: '#fef2f2', color: '#dc2626', '&:hover': { backgroundColor: '#fee2e2' }, '&.Mui-disabled': { opacity: 0.5, backgroundColor: '#fef2f2', color: '#fca5a5' } }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+        );
+      },
     },
   ];
 
@@ -170,6 +256,13 @@ export default function ChapterList() {
           <Typography variant="body1" sx={{ color: '#64748b' }}>
             Organize your story flow. Add, edit, or reorder your chapters here.
           </Typography>
+          {lockWindowEndsAt && (
+            <Typography variant="caption" sx={{ color: lockWindowExpired ? '#dc2626' : '#ea580c', fontWeight: 700, display: 'block', mt: 0.75 }}>
+              {lockWindowExpired
+                ? `Premium lock window ended on ${new Date(lockWindowEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. Locked chapters are now automatically unlocked.`
+                : `Premium lock is available until ${new Date(lockWindowEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`}
+            </Typography>
+          )}
         </Box>
         <Button 
           variant="contained" 
@@ -194,9 +287,28 @@ export default function ChapterList() {
         <DataGrid
           rows={chapters}
           columns={columns}
-          loading={loading}
+          loading={showTableLoader}
           disableRowSelectionOnClick
+          rowHeight={65}
           slots={{
+            loadingOverlay: () => (
+              <Box sx={{ p: 2 }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
+                  <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5 }}>
+                    <Skeleton variant="text" width={30} height={24} />
+                    <Box sx={{ flex: 1 }}>
+                      <Skeleton variant="text" width="60%" height={24} />
+                    </Box>
+                    <Skeleton variant="rectangular" width={120} height={24} sx={{ borderRadius: 1.5 }} />
+                    <Skeleton variant="text" width={90} height={24} />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Skeleton variant="circular" width={30} height={30} />
+                      <Skeleton variant="circular" width={30} height={30} />
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ),
             noRowsOverlay: () => (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
                 <MenuBook sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
@@ -214,22 +326,32 @@ export default function ChapterList() {
       </Paper>
 
       {/* Delete Confirmation Modal */}
-      <Dialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)}>
+      <Dialog open={!!deleteDialog} onClose={handleCloseDeleteDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold', color: '#dc2626' }}>
           Delete Chapter?
         </DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to delete <strong>"{deleteDialog?.title}"</strong>? 
-            This action cannot be undone and readers will lose access to this content.
+          <Alert severity="warning" sx={{ mb: 3, fontWeight: 'bold' }}>
+            This permanently removes the chapter and readers will lose access to its content.
+          </Alert>
+          <Typography sx={{ color: '#334155', mb: 1 }}>
+            To continue, type <strong>{deleteDialog?.title}</strong> below.
           </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder={deleteDialog?.title}
+            value={deleteConfirmationText}
+            onChange={(e) => setDeleteConfirmationText(e.target.value)}
+          />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog(null)} sx={{ color: '#64748b', fontWeight: 'bold' }}>Cancel</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDeleteDialog} sx={{ color: '#64748b', fontWeight: 'bold' }}>Cancel</Button>
           <Button 
             variant="contained" 
+            disabled={deleteConfirmationText !== deleteDialog?.title}
             onClick={handleDeleteChapter}
-            sx={{ backgroundColor: '#dc2626', boxShadow: 'none', fontWeight: 'bold', '&:hover': { backgroundColor: '#b91c1c' } }}
+            sx={{ backgroundColor: '#dc2626', boxShadow: 'none', fontWeight: 'bold', '&:hover': { backgroundColor: '#b91c1c' }, '&.Mui-disabled': { backgroundColor: '#fca5a5', color: '#fff' } }}
           >
             Yes, Delete Chapter
           </Button>
