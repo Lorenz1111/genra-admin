@@ -19,7 +19,6 @@ import MainLayout from './components/Layout/MainLayout';
 const LandingPage = lazy(() => import('./pages/LandingPage')); 
 const Login = lazy(() => import('./pages/Auth/Login'));
 const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
-const OAuthCallback = lazy(() => import('./pages/Auth/OAuthCallback'));
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
@@ -333,7 +332,6 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/auth/callback" element={<OAuthCallback />} />
 
           {/* ============================== */}
           {/* ADMIN ROUTES                   */}

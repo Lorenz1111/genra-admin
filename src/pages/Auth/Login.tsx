@@ -36,7 +36,7 @@ export default function Login() {
       
       if (session) {
         setLoading(true);
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
@@ -62,16 +62,6 @@ export default function Login() {
 
   // --- Load credentials & lockout state on mount ---
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessMessage = params.get('access');
-    const oauthMessage = params.get('oauth');
-
-    if (accessMessage === 'reader-only') {
-      setAuthError('Access Denied: Readers are restricted to the GenrA Mobile App. Please download the app to read books.');
-    } else if (oauthMessage === 'failed') {
-      setAuthError('OAuth login could not be completed. Please try again.');
-    }
-
     const savedEmail = localStorage.getItem('genra_email');
     const savedPassword = localStorage.getItem('genra_password');
     if (savedEmail && savedPassword) {
@@ -202,11 +192,11 @@ export default function Login() {
     setAuthError(null);
     setLoading(true);
     try {
-      const redirectTo = new URL(`${import.meta.env.BASE_URL}auth/callback`, window.location.origin).toString();
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo,
+          // I-redirect pabalik sa login page para ma-trigger yung role checker useEffect
+          redirectTo: window.location.origin + '/login', 
         }
       });
       if (error) throw error;

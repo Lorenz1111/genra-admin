@@ -4,12 +4,13 @@ import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogContent, Typography, Button } from '@mui/material';
 import { ErrorOutline } from '@mui/icons-material';
 
-// Define natin kung ano ang itsura ng User Profile
+// SD FIX: Idinagdag natin ang avatar_url para hindi mag-error ang MainLayout natin
 type Profile = {
   id: string;
   role: 'admin' | 'author' | 'reader';
   username: string | null;
   full_name: string | null;
+  avatar_url: string | null; 
 };
 
 // Define context shape
@@ -29,9 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- SENIOR DEV FIX: Session Expiry States ---
+  // Session Expiry States
   const [showExpiryModal, setShowExpiryModal] = useState(false);
-  const isManualSignOut = useRef(false); // Track kung kinlick ba ng user ang logout
+  const isManualSignOut = useRef(false); 
   const hadActiveSession = useRef(false);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         if (session) fetchProfile(session.user.id);
         hadActiveSession.current = Boolean(session);
-        isManualSignOut.current = false; // Reset natin kapag nakapasok na
+        isManualSignOut.current = false; 
       } 
       else if (event === 'SIGNED_OUT') {
         setProfile(null);
@@ -72,7 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, role, username, full_name')
+        // SD FIX: Isinama natin ang avatar_url sa query!
+        .select('id, role, username, full_name, avatar_url')
         .eq('id', userId)
         .single();
 
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    isManualSignOut.current = true; // Mark as intentional logout para hindi lumabas ang modal
+    isManualSignOut.current = true; // Mark as intentional logout
     hadActiveSession.current = false;
     setShowExpiryModal(false);
     await supabase.auth.signOut();
@@ -97,15 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
-  // --- SENIOR DEV FIX: Modal Close Handler ---
   const handleCloseExpiryModal = () => {
     setShowExpiryModal(false);
-    // Dahil nag-null na ang session, automatic na silang ibinato ng ProtectedRoute mo 
-    // pabalik sa /login. Siguraduhin lang natin na clear ang cache.
-    localStorage.removeItem('genra_email');
-    localStorage.removeItem('genra_password');
-    const loginUrl = new URL(`${import.meta.env.BASE_URL}login`, window.location.origin).toString();
-    window.location.replace(loginUrl);
+    // SD FIX: Tinanggal natin ang pagbura ng localStorage dito.
+    // Kung nag-expire sila, dapat naka-save pa rin yung "Remember Me" credentials nila para mabilis mag-relogin!
+    window.location.replace('/login');
   };
 
   const value = {
@@ -122,19 +120,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* --- GLOBAL SESSION EXPIRY MODAL --- */}
-      {/* Naka-mount ito sa buong app kaya kahit anong page ang ginagawa ng user, lalabas ito kapag na-expire sila */}
       <Dialog open={showExpiryModal} disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 4, p: 2, textAlign: 'center', minWidth: 320 } }}>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <ErrorOutline sx={{ fontSize: 60, color: '#f59e0b', mb: 2 }} /> {/* Amber color for warning */}
+          <ErrorOutline sx={{ fontSize: 60, color: '#f59e0b', mb: 2 }} /> 
           <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>
             Session Expired
           </Typography>
           <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
-            For your security, your GenrA portal session has timed out due to inactivity or token expiration. Please log in again to continue managing your e-books.
+            For your security, your GenrA portal session has timed out due to inactivity or token expiration. Please log in again to continue managing your account.
           </Typography>
           <Button 
             onClick={handleCloseExpiryModal} variant="contained" fullWidth disableElevation
-            sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontSize: '1rem', fontWeight: 'bold' }}
+            sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontSize: '1rem', fontWeight: 'bold', '&:hover': { backgroundColor: '#1d4ed8' } }}
           >
             Back to Login
           </Button>
