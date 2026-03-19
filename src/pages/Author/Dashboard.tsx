@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { 
-  Box, Typography, Paper, Avatar, Button, Chip, Skeleton, Tooltip 
+  Box, Typography, Paper, Avatar, Button, Chip, Skeleton, Tooltip, useTheme, useMediaQuery 
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import { TrendingUp, MenuBook, StarBorder, AddCircleOutline, ListAlt, LibraryBooks } from '@mui/icons-material';
@@ -9,27 +9,27 @@ import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import type { Database } from '../../types/supabase';
-
-type Book = Database['public']['Tables']['books']['Row'];
 
 export default function AuthorDashboard() {
   const { session, profile } = useAuth(); 
   const navigate = useNavigate();
   
-  const [loading, setLoading] = useState(true);
+  // --- SD FEATURE: Mobile Detection ---
+  const theme = useTheme();
+  // Kung ang screen size ay 'sm' pababa (mobile phones), magiging true ito
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); 
   
+  const [loading, setLoading] = useState(true);
   const [totalBooks, setTotalBooks] = useState(0);
   const [totalViews, setTotalViews] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(0);
-  const [topBooks, setTopBooks] = useState<any[]>([]); // Ginamit ang any muna para pumasok ang nested genre relation
+  const [topBooks, setTopBooks] = useState<any[]>([]); 
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       if (!session) return;
 
       try {
-        // SD Fix: Isinama natin ang book_genres para makuha ang mga pangalan ng genre
         const { data: books, error } = await supabase
           .from('books')
           .select('*, book_genres(genres(name))')
@@ -52,7 +52,6 @@ export default function AuthorDashboard() {
             setAvgRating(0); 
           }
 
-          // Imbes na i-slice sa 5, ipapasa natin lahat para gumana ang pagination
           setTopBooks(books);
         }
       } catch (error) {
@@ -66,18 +65,17 @@ export default function AuthorDashboard() {
   }, [session]);
 
   const columns: GridColDef[] = [
-    // SD Feature: Cover Book Column
     { 
       field: 'cover_url', 
       headerName: 'Cover', 
-      width: 80,
+      width: 60, // Pinaliit ko konti para mas fit sa mobile
       sortable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
           <img 
             src={params.value as string || 'https://via.placeholder.com/50'} 
             alt="cover" 
-            style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+            style={{ width: 35, height: 50, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
           />
         </Box>
       )
@@ -86,25 +84,24 @@ export default function AuthorDashboard() {
       field: 'title', 
       headerName: 'Book Title', 
       flex: 1, 
-      minWidth: 200,
+      minWidth: 150, // Pinaliit ang minWidth para mag-adjust sa phone
       renderCell: (params) => (
         <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2, whiteSpace: 'normal', wordWrap: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {params.value}
           </Typography>
         </Box>
       )
     },
-    // SD Feature: Genres Column with Tooltip
     { 
       field: 'genre', 
       headerName: 'Genres', 
-      width: 180,
+      width: 150,
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         const genres = (params.row.book_genres?.map((bg: any) => bg.genres?.name).filter(Boolean) as string[]) || [];
-        const displayGenres = genres.slice(0, 2);
-        const extraGenres = genres.slice(2);
+        const displayGenres = genres.slice(0, 1); // 1 na lang muna ipapakita sa table para di siksik
+        const extraGenres = genres.slice(1);
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, height: '100%' }}>
@@ -129,7 +126,7 @@ export default function AuthorDashboard() {
     { 
       field: 'status', 
       headerName: 'Status', 
-      width: 140,
+      width: 110,
       renderCell: (params: GridRenderCellParams) => {
         const status = (params.value as string | null) || 'unknown';
         
@@ -155,25 +152,24 @@ export default function AuthorDashboard() {
                 fontWeight: 'bold', 
                 textTransform: 'capitalize', 
                 borderRadius: 1.5, 
-                fontSize: '0.7rem' 
+                fontSize: '0.65rem' 
               }} 
             />
           </Box>
         );
       }
     },
-    // SD Feature: Date Uploaded Column
     {
       field: 'created_at',
-      headerName: 'Date Uploaded',
-      width: 130,
+      headerName: 'Uploaded',
+      width: 100,
       renderCell: (params) => {
         const date = params.value ? new Date(params.value as string).toLocaleDateString('en-US', {
-          month: 'short', day: 'numeric', year: 'numeric'
+          month: 'short', day: 'numeric' // Tinanggal ko ang year para mas maikli
         }) : '-';
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500, fontSize: '0.8rem' }}>
               {date}
             </Typography>
           </Box>
@@ -183,11 +179,11 @@ export default function AuthorDashboard() {
     { 
       field: 'views_count', 
       headerName: 'Views', 
-      width: 90, 
+      width: 70, 
       type: 'number',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.85rem' }}>
             {(params.value as number | null)?.toLocaleString() || 0}
           </Typography>
         </Box>
@@ -195,12 +191,12 @@ export default function AuthorDashboard() {
     },
     { 
       field: 'rating', 
-      headerName: 'Rating', 
-      width: 90,
+      headerName: 'Rates', 
+      width: 70,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0.5 }}>
-          <StarBorder sx={{ fontSize: 16, color: '#f59e0b' }} />
-          <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
+          <StarBorder sx={{ fontSize: 14, color: '#f59e0b' }} />
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.85rem' }}>
             {Number(params.value ?? 0).toFixed(1)}
           </Typography>
         </Box>
@@ -209,78 +205,81 @@ export default function AuthorDashboard() {
   ];
 
   return (
-    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: 8 }}>
+    // Tinanggal ko yung horizontal margin/padding na malalaki sa mobile para sagad sa gilid
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: { xs: 4, md: 8 } }}>
       
       {/* --- WELCOME HEADER & QUICK ACTIONS --- */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 5, gap: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Avatar sx={{ width: 64, height: 64, bgcolor: '#eff6ff', color: '#2563eb', fontSize: '1.75rem', fontWeight: 'bold' }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: { xs: 3, md: 5 }, gap: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar sx={{ width: { xs: 48, md: 64 }, height: { xs: 48, md: 64 }, bgcolor: '#eff6ff', color: '#2563eb', fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 'bold' }}>
             {profile?.full_name?.charAt(0) || 'A'}
           </Avatar>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em', mb: 0.5 }}>
-              Welcome back, {profile?.full_name || 'Author'}
+            <Typography variant="h4" sx={{ fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em', mb: 0.5, fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
+              Welcome, {profile?.full_name?.split(' ')[0] || 'Author'}
             </Typography>
-            <Typography variant="body1" sx={{ color: '#64748b' }}>
-              Here is an overview of your books and analytics today.
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              Here is your books overview.
             </Typography>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        {/* Gawing full width ang buttons sa mobile */}
+        <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', md: 'auto' } }}>
           <Button 
+            fullWidth={isMobile}
             variant="outlined" 
             startIcon={<ListAlt />} 
             onClick={() => navigate('/author/books')}
             sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', borderColor: '#cbd5e1', color: '#475569' }}
           >
-            Manage Books
+            Manage
           </Button>
           <Button 
+            fullWidth={isMobile}
             variant="contained" 
             startIcon={<AddCircleOutline />} 
             onClick={() => navigate('/author/upload')}
             sx={{ borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontWeight: 'bold', boxShadow: 'none' }}
           >
-            Upload New
+            Upload
           </Button>
         </Box>
       </Box>
 
       {/* --- STATS CARDS --- */}
-      <Grid container spacing={3} sx={{ mb: 6 }}>
-        <Grid item xs={12} md={4}>
+      <Grid container spacing={2} sx={{ mb: { xs: 4, md: 6 } }}>
+        <Grid item xs={12} sm={4}>
            <StatCard 
              title="Total Views" 
              value={loading ? '-' : totalViews.toLocaleString()} 
-             icon={<TrendingUp fontSize="large" />} 
+             icon={<TrendingUp />} 
              color="#2563eb" bgColor="#eff6ff" 
            />
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={6} sm={4}>
            <StatCard 
-             title="Published Books" 
+             title="Books" 
              value={loading ? '-' : totalBooks.toString()} 
-             icon={<MenuBook fontSize="large" />} 
+             icon={<MenuBook />} 
              color="#10b981" bgColor="#ecfdf5" 
            />
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={6} sm={4}>
            <StatCard 
-             title="Average Rating" 
+             title="Rating" 
              value={loading ? '-' : (avgRating > 0 ? avgRating.toFixed(1) : '0.0')} 
-             icon={<StarBorder fontSize="large" />} 
+             icon={<StarBorder />} 
              color="#f59e0b" bgColor="#fffbeb" 
            />
         </Grid>
       </Grid>
 
       {/* --- TOP PERFORMING BOOKS TABLE --- */}
-      <Typography variant="h6" sx={{ fontWeight: '800', color: '#0f172a', mb: 2, letterSpacing: '-0.01em' }}>
+      <Typography variant="h6" sx={{ fontWeight: '800', color: '#0f172a', mb: 2, letterSpacing: '-0.01em', fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
         Top Performing Books
       </Typography>
       
-      {/* SD FIX: Tinaasan ko height to 650 para kasya ang 10 rows nang maayos */}
       <Paper 
         elevation={0} 
         sx={{ 
@@ -294,30 +293,28 @@ export default function AuthorDashboard() {
           columns={columns}
           loading={loading}
           disableRowSelectionOnClick
-          rowHeight={60} 
-          // SD FEATURE: Setup Pagination to 10 Rows Limit
-          initialState={{
-            columns: {
-              columnVisibilityModel: {
-                status: false
-              }
-            },
-            pagination: { paginationModel: { pageSize: 10, page: 0 } },
+          rowHeight={65} 
+          
+          // --- SD MAGIC: DITO NANGYAYARI ANG RESPONSIVE COLUMNS ---
+          columnVisibilityModel={{
+            genre: !isMobile, // Itatago ang Genre sa cellphone
+            created_at: !isMobile, // Itatago ang Date sa cellphone
+            rating: !isMobile, // Itatago ang Rating sa cellphone
           }}
+
+          initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
           pageSizeOptions={[5, 10, 20]}
           slots={{
-            // SD FEATURE: Solid Skeleton Loading Katulad ng mga nauna
             loadingOverlay: () => (
               <Box sx={{ p: 2 }}>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
                   <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, borderBottom: '1px solid #f1f5f9', pb: 1.5 }}>
-                    <Skeleton variant="rectangular" width={40} height={56} sx={{ borderRadius: 1 }} />
+                    <Skeleton variant="rectangular" width={35} height={50} sx={{ borderRadius: 1 }} />
                     <Box sx={{ flex: 1 }}>
-                      <Skeleton variant="text" width="50%" height={24} />
-                      <Skeleton variant="text" width="30%" height={16} />
+                      <Skeleton variant="text" width="70%" height={24} />
+                      <Skeleton variant="text" width="40%" height={16} />
                     </Box>
-                    <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1.5 }} />
-                    <Skeleton variant="text" width={80} height={24} />
+                    <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 1.5 }} />
                   </Box>
                 ))}
               </Box>
@@ -326,13 +323,13 @@ export default function AuthorDashboard() {
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
                 <LibraryBooks sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#64748b' }}>No analytics yet</Typography>
-                <Typography variant="body2">Publish a book to start tracking views.</Typography>
+                <Typography variant="body2" sx={{ textAlign: 'center', px: 2 }}>Publish a book to start tracking views.</Typography>
               </Box>
             )
           }}
           sx={{
             border: 'none',
-            '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' },
+            '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' },
             '& .MuiDataGrid-cell': { borderColor: '#f1f5f9' },
             '& .MuiTablePagination-root': { color: '#475569', borderTop: '1px solid #e2e8f0' }
           }}
@@ -347,28 +344,28 @@ const StatCard = ({ title, value, icon, color, bgColor }: any) => (
   <Paper 
     elevation={0} 
     sx={{ 
-      p: 3, 
+      p: { xs: 2, md: 3 }, 
       borderRadius: 3, 
       display: 'flex', 
       alignItems: 'center', 
-      gap: 2.5,
+      gap: { xs: 1.5, md: 2.5 },
       backgroundColor: '#fff',
       border: '1px solid #e2e8f0',
       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
     }}
   >
     <Box sx={{ 
-      width: 56, height: 56, borderRadius: 2, 
+      width: { xs: 40, md: 56 }, height: { xs: 40, md: 56 }, borderRadius: 2, 
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backgroundColor: bgColor, color: color
     }}>
       {icon}
     </Box>
     <Box>
-      <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, mb: 0.5, fontSize: '0.85rem' }}>
+      <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, mb: 0.5, fontSize: { xs: '0.7rem', md: '0.85rem' } }}>
         {title}
       </Typography>
-      <Typography variant="h4" sx={{ fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em' }}>
+      <Typography variant="h5" sx={{ fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.25rem', md: '1.75rem' } }}>
         {value}
       </Typography>
     </Box>

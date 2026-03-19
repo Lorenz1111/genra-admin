@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import type { RealtimeChannel, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogContent, Typography, Button } from '@mui/material';
-import { ErrorOutline, Devices } from '@mui/icons-material'; // SD Fix: Added Devices icon
+import { ErrorOutline } from '@mui/icons-material';
 
 type Profile = {
   id: string;
@@ -28,121 +28,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modals
+  // Session Expiry States
   const [showExpiryModal, setShowExpiryModal] = useState(false);
-  const [showDeviceConflictModal, setShowDeviceConflictModal] = useState(false); // SD Logic
-  
   const isManualSignOut = useRef(false); 
-  const isHandlingDeviceConflict = useRef(false);
   const hadActiveSession = useRef(false);
-  const sessionChannelRef = useRef<RealtimeChannel | null>(null);
-  const sessionWatchCleanupRef = useRef<(() => void) | null>(null);
-
-  const cleanupRealtimeSessionListener = () => {
-    if (sessionChannelRef.current) {
-      supabase.removeChannel(sessionChannelRef.current);
-      sessionChannelRef.current = null;
-    }
-  };
-
-  const cleanupSessionWatchers = () => {
-    cleanupRealtimeSessionListener();
-    sessionWatchCleanupRef.current?.();
-    sessionWatchCleanupRef.current = null;
-  };
-
-  const generateAndSaveDeviceToken = async (userId: string) => {
-    const deviceToken = crypto.randomUUID();
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ session_token: deviceToken })
-      .eq('id', userId);
-
-    if (error) {
-      console.error('Error saving device token:', error);
-      localStorage.removeItem('device_token');
-      return false;
-    }
-
-    localStorage.setItem('device_token', deviceToken);
-    return true;
-  };
-
-  const handleDeviceConflictLogout = async () => {
-    if (isHandlingDeviceConflict.current) return;
-
-    isHandlingDeviceConflict.current = true;
-    isManualSignOut.current = true; // Set true para hindi lumabas ang generic expiry modal
-    cleanupSessionWatchers();
-    localStorage.removeItem('device_token');
-    await supabase.auth.signOut();
-    setProfile(null);
-    setSession(null);
-    setLoading(false);
-    setShowDeviceConflictModal(true); // Ilabas yung custom Single Device modal
-    isHandlingDeviceConflict.current = false;
-  };
-
-  const validateCurrentSessionToken = async (userId: string) => {
-    const currentLocalToken = localStorage.getItem('device_token');
-    if (!currentLocalToken || isHandlingDeviceConflict.current) return;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('session_token')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error validating session token:', error);
-      return;
-    }
-
-    if (data?.session_token && data.session_token !== currentLocalToken) {
-      await handleDeviceConflictLogout();
-    }
-  };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // 1. Check active session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       hadActiveSession.current = Boolean(session);
-      if (session) {
-        setLoading(true);
-
-        let canWatchSession = Boolean(localStorage.getItem('device_token'));
-        if (!canWatchSession) {
-          canWatchSession = await generateAndSaveDeviceToken(session.user.id);
-        }
-
-        fetchProfile(session.user.id);
-        if (canWatchSession) {
-          setupSessionWatchers(session.user.id);
-        } else {
-          cleanupSessionWatchers();
-        }
-      } else setLoading(false);
+      if (session) fetchProfile(session.user.id);
+      else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // 2. Listen for login/logout/expiry changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(session);
-        if (session) {
-          setLoading(true);
-
-          let canWatchSession = Boolean(localStorage.getItem('device_token'));
-          if (event === 'SIGNED_IN' || !canWatchSession) {
-            canWatchSession = await generateAndSaveDeviceToken(session.user.id);
-          }
-
-          fetchProfile(session.user.id);
-          if (canWatchSession) {
-            setupSessionWatchers(session.user.id);
-          } else {
-            cleanupSessionWatchers();
-          }
-        }
+        if (session) fetchProfile(session.user.id);
         hadActiveSession.current = Boolean(session);
         isManualSignOut.current = false; 
       } 
@@ -150,8 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setSession(null);
         setLoading(false);
-        cleanupSessionWatchers();
 
+        // Kapag hindi sinadya ang pag-logout (e.g., token expired), ilabas ang modal!
         if (hadActiveSession.current && !isManualSignOut.current) {
           setShowExpiryModal(true);
         }
@@ -159,55 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => {
-      cleanupSessionWatchers();
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
-
-  // --- SD FEATURE: Realtime Device Conflict Listener ---
-  const setupSessionWatchers = (userId: string) => {
-    cleanupSessionWatchers();
-
-    sessionChannelRef.current = supabase.channel(`session-limit-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
-        (payload) => {
-          const currentLocalToken = localStorage.getItem('device_token');
-          const newDbToken = payload.new.session_token;
-
-          // Kapag nagbago ang token sa database at iba na ito sa hawak ng device mo, I-LOGOUT!
-          if (newDbToken && currentLocalToken && newDbToken !== currentLocalToken) {
-            handleDeviceConflictLogout();
-          }
-        }
-      )
-      .subscribe();
-
-    const validateSession = () => {
-      void validateCurrentSessionToken(userId);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        validateSession();
-      }
-    };
-
-    const intervalId = window.setInterval(validateSession, 30000);
-
-    window.addEventListener('focus', validateSession);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    sessionWatchCleanupRef.current = () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', validateSession);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-
-    validateSession();
-  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -217,8 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single();
 
-      if (error) console.error('Error fetching profile:', error);
-      else setProfile(data as Profile);
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setProfile(data as Profile);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -230,47 +90,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isManualSignOut.current = true; 
     hadActiveSession.current = false;
     setShowExpiryModal(false);
-    cleanupSessionWatchers();
-    localStorage.removeItem('device_token');
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
   };
 
-  const handleCloseModals = () => {
+  const handleCloseExpiryModal = () => {
     setShowExpiryModal(false);
-    setShowDeviceConflictModal(false);
     window.location.replace(new URL(`${import.meta.env.BASE_URL}login`, window.location.origin).toString());
   };
 
   const value = {
-    session, profile, loading, isAdmin: profile?.role === 'admin', isAuthor: profile?.role === 'author', signOut,
+    session,
+    profile,
+    loading,
+    isAdmin: profile?.role === 'admin',
+    isAuthor: profile?.role === 'author',
+    signOut,
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
 
-      {/* 1. Generic Expiry Modal */}
       <Dialog open={showExpiryModal} disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 4, p: 2, textAlign: 'center', minWidth: 320 } }}>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <ErrorOutline sx={{ fontSize: 60, color: '#f59e0b', mb: 2 }} /> 
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>Session Expired</Typography>
-          <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>Your session has timed out. Please log in again.</Typography>
-          <Button onClick={handleCloseModals} variant="contained" fullWidth disableElevation sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', fontWeight: 'bold' }}>Back to Login</Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* 2. SD FEATURE: Multiple Devices Warning Modal */}
-      <Dialog open={showDeviceConflictModal} disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 4, p: 2, textAlign: 'center', minWidth: 320 } }}>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Devices sx={{ fontSize: 60, color: '#dc2626', mb: 2 }} /> 
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>Logged Out</Typography>
-          <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
-            Your account was just logged in from another device or browser. For security, we limit GenrA accounts to one active session at a time.
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>
+            Session Expired
           </Typography>
-          <Button onClick={handleCloseModals} variant="contained" fullWidth disableElevation sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#dc2626', fontWeight: 'bold', '&:hover': { backgroundColor: '#b91c1c' } }}>
-            Log in Again
+          <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
+            For your security, your GenrA portal session has timed out due to inactivity or token expiration. Please log in again to continue managing your account.
+          </Typography>
+          <Button 
+            onClick={handleCloseExpiryModal} variant="contained" fullWidth disableElevation
+            sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontSize: '1rem', fontWeight: 'bold', '&:hover': { backgroundColor: '#1d4ed8' } }}
+          >
+            Back to Login
           </Button>
         </DialogContent>
       </Dialog>
@@ -281,6 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };

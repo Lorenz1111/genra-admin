@@ -304,7 +304,6 @@ export type Database = {
           status: string
           username: string | null
           website: string | null
-          session_token: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -320,7 +319,6 @@ export type Database = {
           status?: string
           username?: string | null
           website?: string | null
-          session_token: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -336,7 +334,6 @@ export type Database = {
           status?: string
           username?: string | null
           website?: string | null
-          session_token: string | null
         }
         Relationships: []
       }

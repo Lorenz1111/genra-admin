@@ -27,36 +27,34 @@ export default function Login() {
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
 
+  // --- OAUTH & SESSION CHECKER ON MOUNT ---
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
         setLoading(true);
-        
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
           .single();
 
-        if (error || !profile) {
-          setAuthError('Error fetching profile. Please contact support.');
-          setLoading(false);
-          return;
-        }
-
-        if (profile.role === 'admin') {
-          navigate('/admin');
-        } else if (profile.role === 'author') {
-          navigate('/author');
-        } else {
-          await supabase.auth.signOut();
-          setAuthError('Access Denied: Readers are restricted to the GenrA Mobile App.');
+        if (profile) {
+          if (profile.role === 'admin') navigate('/admin');
+          else if (profile.role === 'author') navigate('/author');
+          else {
+            await supabase.auth.signOut();
+            setAuthError('Access Denied: Readers are restricted to the GenrA Mobile App. Please download the app to read books.');
+            setLoading(false);
+          }
+        } else if (error) {
+          setAuthError('Profile not found. Please contact support.');
           setLoading(false);
         }
       }
-    });
-
-    return () => subscription.unsubscribe();
+    };
+    checkExistingSession();
   }, [navigate]);
 
   useEffect(() => {
@@ -130,7 +128,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -145,8 +143,29 @@ export default function Login() {
         localStorage.removeItem('genra_email');
         localStorage.removeItem('genra_password');
       }
+
+      // Check role and navigate directly!
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        throw new Error('Profile not found.');
+      }
+
+      if (profile.role === 'admin') navigate('/admin');
+      else if (profile.role === 'author') navigate('/author');
+      else {
+        await supabase.auth.signOut();
+        throw new Error('Access Denied: Readers are restricted to the GenrA Mobile App.');
+      }
+
     } catch (err: any) {
       handleFailedAttempt();
+      setAuthError(err.message);
       setLoading(false);
     }
   };
