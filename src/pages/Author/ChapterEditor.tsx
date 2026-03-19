@@ -2,13 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Box, TextField, Button, Typography, Paper, 
-  FormControlLabel, Switch, CircularProgress, Snackbar, Alert, Divider
+  FormControlLabel, Switch, CircularProgress, Snackbar, Alert, Divider, Tooltip
 } from '@mui/material';
 import { Save as SaveIcon, ArrowBack, LockOutlined, LockOpenOutlined } from '@mui/icons-material';
 import { supabase } from '../../lib/supabaseClient';
 
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+
+const LOCK_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+const getLockWindowEnd = (value: string | null) => {
+  if (!value) return null;
+  return new Date(value).getTime() + LOCK_WINDOW_MS;
+};
   
 export default function ChapterEditor() {
   const { bookId, chapterId } = useParams(); 
@@ -23,8 +30,16 @@ export default function ChapterEditor() {
   const [content, setContent] = useState(''); // Ito ay magho-hold na ng HTML tags
   const [sequence, setSequence] = useState(1);
   const [isLocked, setIsLocked] = useState(false);
+  const [bookCreatedAt, setBookCreatedAt] = useState<string | null>(null);
   
   const [toast, setToast] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+  const lockWindowEndsAt = getLockWindowEnd(bookCreatedAt);
+  const canUseLock = lockWindowEndsAt === null ? true : Date.now() <= lockWindowEndsAt;
+  const lockWindowLabel = lockWindowEndsAt
+    ? canUseLock
+      ? `Premium lock available until ${new Date(lockWindowEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+      : `Premium lock expired on ${new Date(lockWindowEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. Chapters now unlock automatically.`
+    : 'Premium lock window is unavailable until a publish date exists.';
 
   // Custom Toolbar Options para sa Authors
   const quillModules = {
@@ -41,6 +56,18 @@ export default function ChapterEditor() {
     const fetchChapterData = async () => {
       if (!bookId) return;
 
+      const { data: book } = await supabase
+        .from('books')
+        .select('created_at')
+        .eq('id', bookId)
+        .single();
+
+      const currentBookCreatedAt = book?.created_at || null;
+      setBookCreatedAt(currentBookCreatedAt);
+      const lockWindowExpired = currentBookCreatedAt
+        ? Date.now() > new Date(currentBookCreatedAt).getTime() + LOCK_WINDOW_MS
+        : false;
+
       if (isEditMode) {
         const { data, error } = await supabase
           .from('chapters')
@@ -52,7 +79,15 @@ export default function ChapterEditor() {
           setTitle(data.title);
           setContent(data.content);
           setSequence(data.sequence_number ?? 1);
-          setIsLocked(Boolean(data.is_locked));
+          const nextLockedState = lockWindowExpired ? false : Boolean(data.is_locked);
+          setIsLocked(nextLockedState);
+
+          if (lockWindowExpired && data.is_locked) {
+            await supabase
+              .from('chapters')
+              .update({ is_locked: false })
+              .eq('id', chapterId);
+          }
         } else {
           showToast('Failed to load chapter details.', 'error');
         }
@@ -92,6 +127,8 @@ export default function ChapterEditor() {
 
     setLoading(true);
     try {
+      const effectiveLockedState = canUseLock ? isLocked : false;
+
       if (isEditMode) {
         const { error } = await supabase
           .from('chapters')
@@ -99,7 +136,7 @@ export default function ChapterEditor() {
             title: title.trim(),
             content: content, // I-save natin kasama yung HTML formatting
             sequence_number: sequence,
-            is_locked: isLocked
+            is_locked: effectiveLockedState
           })
           .eq('id', chapterId);
 
@@ -113,7 +150,7 @@ export default function ChapterEditor() {
             title: title.trim(),
             content: content, // I-save natin kasama yung HTML formatting
             sequence_number: sequence,
-            is_locked: isLocked
+            is_locked: effectiveLockedState
           });
 
         if (error) throw error;
@@ -216,22 +253,34 @@ export default function ChapterEditor() {
                   Premium Chapter
                 </Typography>
                 <Typography variant="caption" sx={{ color: '#64748b' }}>
-                  {isLocked ? "Only users with premium access or coins can read this chapter." : "This chapter is free for all users to read."}
+                  {canUseLock
+                    ? isLocked
+                      ? "Only users with premium access or coins can read this chapter."
+                      : "This chapter is free for all users to read."
+                    : "Premium lock is no longer available for this book. Chapters auto-unlock after the 1-week window."}
+                </Typography>
+                <Typography variant="caption" sx={{ color: canUseLock ? '#ea580c' : '#dc2626', fontWeight: 700, display: 'block', mt: 0.5 }}>
+                  {lockWindowLabel}
                 </Typography>
               </Box>
             </Box>
-            <FormControlLabel
-              control={
-                <Switch 
-                  checked={isLocked} 
-                  onChange={(e) => setIsLocked(e.target.checked)} 
-                  color="error"
+            <Tooltip title={lockWindowLabel} arrow>
+              <span>
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      checked={canUseLock ? isLocked : false}
+                      onChange={(e) => setIsLocked(e.target.checked)} 
+                      color="error"
+                      disabled={!canUseLock}
+                    />
+                  }
+                  label={canUseLock ? (isLocked ? "Locked" : "Unlocked") : "Expired"}
+                  labelPlacement="start"
+                  sx={{ m: 0, '& .MuiFormControlLabel-label': { fontWeight: 'bold', color: '#475569', mr: 1, fontSize: '0.9rem' } }}
                 />
-              }
-              label={isLocked ? "Locked" : "Unlocked"}
-              labelPlacement="start"
-              sx={{ m: 0, '& .MuiFormControlLabel-label': { fontWeight: 'bold', color: '#475569', mr: 1, fontSize: '0.9rem' } }}
-            />
+              </span>
+            </Tooltip>
           </Box>
 
           <Box>
