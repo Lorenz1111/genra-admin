@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const generateAndSaveDeviceToken = async (userId: string) => {
     const deviceToken = crypto.randomUUID();
-    localStorage.setItem('device_token', deviceToken);
 
     const { error } = await supabase
       .from('profiles')
@@ -62,7 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       console.error('Error saving device token:', error);
+      localStorage.removeItem('device_token');
+      return false;
     }
+
+    localStorage.setItem('device_token', deviceToken);
+    return true;
   };
 
   const handleDeviceConflictLogout = async () => {
@@ -105,11 +109,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       hadActiveSession.current = Boolean(session);
       if (session) {
-        if (!localStorage.getItem('device_token')) {
-          await generateAndSaveDeviceToken(session.user.id);
+        setLoading(true);
+
+        let canWatchSession = Boolean(localStorage.getItem('device_token'));
+        if (!canWatchSession) {
+          canWatchSession = await generateAndSaveDeviceToken(session.user.id);
         }
+
         fetchProfile(session.user.id);
-        setupSessionWatchers(session.user.id);
+        if (canWatchSession) {
+          setupSessionWatchers(session.user.id);
+        } else {
+          cleanupSessionWatchers();
+        }
       } else setLoading(false);
     });
 
@@ -117,11 +129,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(session);
         if (session) {
-          if (event === 'SIGNED_IN' || !localStorage.getItem('device_token')) {
-            await generateAndSaveDeviceToken(session.user.id);
+          setLoading(true);
+
+          let canWatchSession = Boolean(localStorage.getItem('device_token'));
+          if (event === 'SIGNED_IN' || !canWatchSession) {
+            canWatchSession = await generateAndSaveDeviceToken(session.user.id);
           }
+
           fetchProfile(session.user.id);
-          setupSessionWatchers(session.user.id);
+          if (canWatchSession) {
+            setupSessionWatchers(session.user.id);
+          } else {
+            cleanupSessionWatchers();
+          }
         }
         hadActiveSession.current = Boolean(session);
         isManualSignOut.current = false; 
