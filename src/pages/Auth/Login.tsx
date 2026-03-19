@@ -3,9 +3,11 @@ import { supabase } from '../../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, Button, TextField, Typography, CircularProgress, 
-  Checkbox, FormControlLabel, Link as MuiLink, Alert
+  Checkbox, FormControlLabel, Link as MuiLink, Alert, Divider
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import GoogleIcon from '@mui/icons-material/Google';
+import FacebookIcon from '@mui/icons-material/Facebook';
 
 import logo from '../../assets/genra-logo.png'; 
 
@@ -26,6 +28,38 @@ export default function Login() {
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
 
+  // --- SD FEATURE: OAuth Redirect Handler & Role Checker ---
+  // Sasalubungin nito ang user pagbalik nila galing Google/Facebook
+  useEffect(() => {
+    const checkOAuthSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setLoading(true);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          if (profile.role === 'admin') {
+            navigate('/admin');
+          } else if (profile.role === 'author') {
+            navigate('/author');
+          } else {
+            // SD Security: Kung Reader siya na nakalusot via Google, i-logout agad!
+            await supabase.auth.signOut();
+            setAuthError('Access Denied: Readers are restricted to the GenrA Mobile App. Please download the app to read books.');
+            setLoading(false);
+          }
+        }
+      }
+    };
+
+    checkOAuthSession();
+  }, [navigate]);
+
   // --- Load credentials & lockout state on mount ---
   useEffect(() => {
     const savedEmail = localStorage.getItem('genra_email');
@@ -36,7 +70,6 @@ export default function Login() {
       setRememberMe(true);
     }
 
-    // Load lockout state
     const savedAttempts = parseInt(localStorage.getItem('login_attempts') || '0', 10);
     const savedLockoutTime = parseInt(localStorage.getItem('login_lockout_time') || '0', 10);
     
@@ -47,7 +80,6 @@ export default function Login() {
       if (now < savedLockoutTime) {
         setLockoutTime(savedLockoutTime);
       } else {
-        // Lockout expired
         resetAttempts();
       }
     }
@@ -101,9 +133,7 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (lockoutTime && Date.now() < lockoutTime) {
-      return; // Prevent login if currently locked out
-    }
+    if (lockoutTime && Date.now() < lockoutTime) return;
 
     setAuthError(null);
 
@@ -130,7 +160,6 @@ export default function Login() {
 
       if (profileError || !profile) throw new Error('Profile not found.');
 
-      // --- Success: Reset attempts ---
       resetAttempts();
 
       if (rememberMe) {
@@ -146,13 +175,33 @@ export default function Login() {
       } else if (profile.role === 'author') {
         setTimeout(() => navigate('/author'), 400);
       } else {
+        // SD Security: Error for normal email/password readers
         await supabase.auth.signOut();
-        setAuthError('Readers are restricted to the GenrA Mobile App.');
+        setAuthError('Access Denied: Readers are restricted to the GenrA Mobile App. Please download the app to read books.');
         setLoading(false);
       }
 
     } catch (err: any) {
       handleFailedAttempt();
+      setLoading(false);
+    }
+  };
+
+  // --- SD FEATURE: OAuth Login Handler ---
+  const handleOAuthLogin = async (provider: 'google' | 'facebook') => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          // I-redirect pabalik sa login page para ma-trigger yung role checker useEffect
+          redirectTo: window.location.origin + '/login', 
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      setAuthError(`Failed to login with ${provider}. Please try again.`);
       setLoading(false);
     }
   };
@@ -211,10 +260,16 @@ export default function Login() {
             Please enter your details to access the portal.
           </Typography>
 
-          {/* SENIOR DEV FIX: Lockout Warning Banner */}
           {isLockedOut && (
             <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 'bold' }}>
               Too many failed attempts. Try again in {countdown} seconds.
+            </Alert>
+          )}
+
+          {/* SD FEATURE: General Error Alert para madaling basahin yung Reader warning */}
+          {authError && !isLockedOut && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 'bold', lineHeight: 1.4 }}>
+              {authError}
             </Alert>
           )}
 
@@ -222,7 +277,6 @@ export default function Login() {
             <TextField
               label="Email Address" variant="outlined" fullWidth value={email}
               onChange={(e) => { setEmail(e.target.value); if (authError && !isLockedOut) setAuthError(null); }}
-              error={!!authError && !isLockedOut}
               disabled={isLockedOut || loading}
             />
             
@@ -230,14 +284,8 @@ export default function Login() {
               <TextField
                 label="Password" type="password" variant="outlined" fullWidth value={password}
                 onChange={(e) => { setPassword(e.target.value); if (authError && !isLockedOut) setAuthError(null); }}
-                error={!!authError && !isLockedOut}
                 disabled={isLockedOut || loading}
               />
-              {authError && !isLockedOut && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1, display: 'block', fontWeight: 500 }}>
-                  {authError}
-                </Typography>
-              )}
             </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: -1 }}>
@@ -276,6 +324,39 @@ export default function Login() {
               {loading ? <CircularProgress size={24} color="inherit" /> : (isLockedOut ? `Locked (${countdown}s)` : 'Sign In')}
             </Button>
           </Box>
+
+          {/* SD FEATURE: OAUTH BUTTONS */}
+          <Divider sx={{ my: 3, typography: 'body2', color: '#94a3b8', fontWeight: 'bold' }}>OR CONTINUE WITH</Divider>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              startIcon={<GoogleIcon sx={{ color: '#db4437' }} />}
+              onClick={() => handleOAuthLogin('google')}
+              disabled={loading || isLockedOut}
+              sx={{ 
+                py: 1.2, borderRadius: 2, borderColor: '#cbd5e1', color: '#0f172a', fontWeight: 'bold', textTransform: 'none',
+                '&:hover': { backgroundColor: '#f8fafc', borderColor: '#94a3b8' }
+              }}
+            >
+              Google
+            </Button>
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              startIcon={<FacebookIcon sx={{ color: '#1877f2' }} />}
+              onClick={() => handleOAuthLogin('facebook')}
+              disabled={loading || isLockedOut}
+              sx={{ 
+                py: 1.2, borderRadius: 2, borderColor: '#cbd5e1', color: '#0f172a', fontWeight: 'bold', textTransform: 'none',
+                '&:hover': { backgroundColor: '#f8fafc', borderColor: '#94a3b8' }
+              }}
+            >
+              Facebook
+            </Button>
+          </Box>
+
         </Box>
       </Box>
 
