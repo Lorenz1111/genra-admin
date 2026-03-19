@@ -32,11 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // --- SENIOR DEV FIX: Session Expiry States ---
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const isManualSignOut = useRef(false); // Track kung kinlick ba ng user ang logout
+  const hadActiveSession = useRef(false);
 
   useEffect(() => {
     // 1. Check active session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      hadActiveSession.current = Boolean(session);
       if (session) fetchProfile(session.user.id);
       else setLoading(false);
     });
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(session);
         if (session) fetchProfile(session.user.id);
+        hadActiveSession.current = Boolean(session);
         isManualSignOut.current = false; // Reset natin kapag nakapasok na
       } 
       else if (event === 'SIGNED_OUT') {
@@ -54,9 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
 
         // Kapag hindi sinadya ang pag-logout (e.g., token expired), ilabas ang modal!
-        if (!isManualSignOut.current) {
+        if (hadActiveSession.current && !isManualSignOut.current) {
           setShowExpiryModal(true);
         }
+        hadActiveSession.current = false;
       }
     });
 
@@ -86,6 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     isManualSignOut.current = true; // Mark as intentional logout para hindi lumabas ang modal
+    hadActiveSession.current = false;
+    setShowExpiryModal(false);
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
@@ -98,6 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // pabalik sa /login. Siguraduhin lang natin na clear ang cache.
     localStorage.removeItem('genra_email');
     localStorage.removeItem('genra_password');
+    const loginUrl = new URL(`${import.meta.env.BASE_URL}login`, window.location.origin).toString();
+    window.location.replace(loginUrl);
   };
 
   const value = {
