@@ -2,9 +2,8 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogContent, Typography, Button } from '@mui/material';
-import { ErrorOutline } from '@mui/icons-material';
+import { ErrorOutline, Devices } from '@mui/icons-material'; // SD Fix: Added Devices icon
 
-// SD FIX: Idinagdag natin ang avatar_url para hindi mag-error ang MainLayout natin
 type Profile = {
   id: string;
   role: 'admin' | 'author' | 'reader';
@@ -13,7 +12,6 @@ type Profile = {
   avatar_url: string | null; 
 };
 
-// Define context shape
 type AuthContextType = {
   session: Session | null;
   profile: Profile | null;
@@ -30,25 +28,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Session Expiry States
+  // Modals
   const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [showDeviceConflictModal, setShowDeviceConflictModal] = useState(false); // SD Logic
+  
   const isManualSignOut = useRef(false); 
   const hadActiveSession = useRef(false);
 
   useEffect(() => {
-    // 1. Check active session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       hadActiveSession.current = Boolean(session);
-      if (session) fetchProfile(session.user.id);
-      else setLoading(false);
+      if (session) {
+        fetchProfile(session.user.id);
+        setupRealtimeSessionListener(session.user.id); // SD Init Listener
+      } else setLoading(false);
     });
 
-    // 2. Listen for login/logout/expiry changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(session);
-        if (session) fetchProfile(session.user.id);
+        if (session) {
+          fetchProfile(session.user.id);
+          setupRealtimeSessionListener(session.user.id);
+        }
         hadActiveSession.current = Boolean(session);
         isManualSignOut.current = false; 
       } 
@@ -57,7 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setLoading(false);
 
-        // Kapag hindi sinadya ang pag-logout (e.g., token expired), ilabas ang modal!
         if (hadActiveSession.current && !isManualSignOut.current) {
           setShowExpiryModal(true);
         }
@@ -68,21 +70,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Helper: Fetch extra details from 'profiles' table
+  // --- SD FEATURE: Realtime Device Conflict Listener ---
+  const setupRealtimeSessionListener = (userId: string) => {
+    // Aabangan natin yung live changes sa mismong row mo sa profiles
+    const channel = supabase.channel('custom-session-channel')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload) => {
+          const currentLocalToken = localStorage.getItem('device_token');
+          const newDbToken = payload.new.session_token;
+
+          // Kapag nagbago ang token sa database at iba na ito sa hawak ng device mo, I-LOGOUT!
+          if (newDbToken && currentLocalToken && newDbToken !== currentLocalToken) {
+            handleDeviceConflictLogout();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  };
+
+  const handleDeviceConflictLogout = async () => {
+    isManualSignOut.current = true; // Set true para hindi lumabas ang generic expiry modal
+    await supabase.auth.signOut();
+    setProfile(null);
+    setSession(null);
+    setShowDeviceConflictModal(true); // Ilabas yung custom Single Device modal
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        // SD FIX: Isinama natin ang avatar_url sa query!
         .select('id, role, username, full_name, avatar_url')
         .eq('id', userId)
         .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else {
-        setProfile(data as Profile);
-      }
+      if (error) console.error('Error fetching profile:', error);
+      else setProfile(data as Profile);
     } catch (err) {
       console.error(err);
     } finally {
@@ -91,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    isManualSignOut.current = true; // Mark as intentional logout
+    isManualSignOut.current = true; 
     hadActiveSession.current = false;
     setShowExpiryModal(false);
     await supabase.auth.signOut();
@@ -99,41 +126,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
-  const handleCloseExpiryModal = () => {
+  const handleCloseModals = () => {
     setShowExpiryModal(false);
-    // SD FIX: Tinanggal natin ang pagbura ng localStorage dito.
-    // Kung nag-expire sila, dapat naka-save pa rin yung "Remember Me" credentials nila para mabilis mag-relogin!
+    setShowDeviceConflictModal(false);
     window.location.replace('/login');
   };
 
   const value = {
-    session,
-    profile,
-    loading,
-    isAdmin: profile?.role === 'admin',
-    isAuthor: profile?.role === 'author',
-    signOut,
+    session, profile, loading, isAdmin: profile?.role === 'admin', isAuthor: profile?.role === 'author', signOut,
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
 
-      {/* --- GLOBAL SESSION EXPIRY MODAL --- */}
+      {/* 1. Generic Expiry Modal */}
       <Dialog open={showExpiryModal} disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 4, p: 2, textAlign: 'center', minWidth: 320 } }}>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <ErrorOutline sx={{ fontSize: 60, color: '#f59e0b', mb: 2 }} /> 
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>
-            Session Expired
-          </Typography>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>Session Expired</Typography>
+          <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>Your session has timed out. Please log in again.</Typography>
+          <Button onClick={handleCloseModals} variant="contained" fullWidth disableElevation sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', fontWeight: 'bold' }}>Back to Login</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. SD FEATURE: Multiple Devices Warning Modal */}
+      <Dialog open={showDeviceConflictModal} disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 4, p: 2, textAlign: 'center', minWidth: 320 } }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Devices sx={{ fontSize: 60, color: '#dc2626', mb: 2 }} /> 
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, color: '#0f172a' }}>Logged Out</Typography>
           <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
-            For your security, your GenrA portal session has timed out due to inactivity or token expiration. Please log in again to continue managing your account.
+            Your account was just logged in from another device or browser. For security, we limit GenrA accounts to one active session at a time.
           </Typography>
-          <Button 
-            onClick={handleCloseExpiryModal} variant="contained" fullWidth disableElevation
-            sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#2563eb', textTransform: 'none', fontSize: '1rem', fontWeight: 'bold', '&:hover': { backgroundColor: '#1d4ed8' } }}
-          >
-            Back to Login
+          <Button onClick={handleCloseModals} variant="contained" fullWidth disableElevation sx={{ py: 1.5, borderRadius: 2, backgroundColor: '#dc2626', fontWeight: 'bold', '&:hover': { backgroundColor: '#b91c1c' } }}>
+            Log in Again
           </Button>
         </DialogContent>
       </Dialog>
@@ -142,11 +168,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Custom Hook para madaling gamitin sa ibang files
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
