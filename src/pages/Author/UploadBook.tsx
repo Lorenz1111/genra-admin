@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 interface Genre {
   id: string;
   name: string;
+  description?: string | null;
 }
 
 export default function UploadBook() {
@@ -36,7 +37,7 @@ export default function UploadBook() {
     const fetchGenres = async () => {
       const { data, error } = await supabase
         .from('genres')
-        .select('id, name')
+        .select('id, name, description')
         .order('name', { ascending: true });
 
       if (error) {
@@ -286,6 +287,13 @@ export default function UploadBook() {
                     value={selectedGenreIds}
                     onChange={handleGenreChange}
                     input={<OutlinedInput sx={{ borderRadius: 2 }} />}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          maxHeight: 320
+                        }
+                      }
+                    }}
                     renderValue={(selected) => {
                       if (selected.length === 0) {
                         return <Typography sx={{ color: '#94a3b8' }}>Select up to 3 genres</Typography>;
@@ -304,13 +312,56 @@ export default function UploadBook() {
                       <MenuItem disabled>Loading genres...</MenuItem>
                     ) : (
                       availableGenres.map((genre) => (
-                        <MenuItem key={genre.id} value={genre.id}>
-                          {genre.name}
+                        <MenuItem key={genre.id} value={genre.id} sx={{ alignItems: 'flex-start', py: 1.25 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                              {genre.name}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: '#64748b',
+                                whiteSpace: 'normal',
+                                lineHeight: 1.45,
+                                display: 'block',
+                                maxWidth: '100%'
+                              }}
+                            >
+                              {genre.description || 'No description provided.'}
+                            </Typography>
+                          </Box>
                         </MenuItem>
                       ))
                     )}
                   </Select>
                 </FormControl>
+                {selectedGenreIds.length > 0 && (
+                  <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {selectedGenreIds.map((genreId) => {
+                      const genre = availableGenres.find((item) => item.id === genreId);
+                      if (!genre) return null;
+
+                      return (
+                        <Box
+                          key={genre.id}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', mb: 0.25 }}>
+                            {genre.name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#64748b', lineHeight: 1.5, display: 'block' }}>
+                            {genre.description || 'No description provided.'}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
               </Box>
 
               <Box>
