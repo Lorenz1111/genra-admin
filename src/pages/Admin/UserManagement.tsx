@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { 
   Box, Typography, Paper, IconButton, Tooltip, Dialog, 
   DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert,
-  FormControl, InputLabel, Select, MenuItem, Avatar, Chip, Skeleton, Divider
+  FormControl, InputLabel, Select, MenuItem, Avatar, Chip, Skeleton, Divider, TextField
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
@@ -36,6 +36,7 @@ export default function UserManagement() {
   // SD Feature: State for "View User Information"
   const [viewDialog, setViewDialog] = useState<Profile | null>(null);
   const [newRole, setNewRole] = useState('');
+  const [statusConfirmationText, setStatusConfirmationText] = useState('');
   const [toast, setToast] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
   const fetchUsers = async () => {
@@ -85,8 +86,13 @@ export default function UserManagement() {
     } catch (error: any) {
       showToast(error.message, 'error');
     } finally {
-      setStatusDialog(null);
+      handleCloseStatusDialog();
     }
+  };
+
+  const handleCloseStatusDialog = () => {
+    setStatusDialog(null);
+    setStatusConfirmationText('');
   };
 
   const handleUpdateRole = async () => {
@@ -373,14 +379,40 @@ export default function UserManagement() {
       </Dialog>
 
       {/* 3. Change Status (Ban/Unban) Modal */}
-      <Dialog open={!!statusDialog} onClose={() => setStatusDialog(null)}>
+      <Dialog open={!!statusDialog} onClose={handleCloseStatusDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold', color: statusDialog?.currentStatus === 'active' ? '#dc2626' : '#16a34a' }}>{statusDialog?.currentStatus === 'active' ? 'Ban User?' : 'Unban User?'}</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to {statusDialog?.currentStatus === 'active' ? 'ban' : 'unban'} <strong>"{statusDialog?.name}"</strong>? {statusDialog?.currentStatus === 'active' ? " They will no longer be able to access the app." : " Their access to the app will be restored."}</Typography>
+          {statusDialog?.currentStatus === 'active' && (
+            <Alert severity="warning" sx={{ mb: 2, fontWeight: 'bold' }}>
+              Warning: Banning this user will immediately block their access to the app until an admin restores it.
+            </Alert>
+          )}
+          <Typography sx={{ mb: statusDialog?.currentStatus === 'active' ? 1.5 : 0 }}>
+            Are you sure you want to {statusDialog?.currentStatus === 'active' ? 'ban' : 'unban'} <strong>"{statusDialog?.name}"</strong>? {statusDialog?.currentStatus === 'active' ? " They will no longer be able to access the app." : " Their access to the app will be restored."}
+          </Typography>
+          {statusDialog?.currentStatus === 'active' && (
+            <TextField
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder={statusDialog?.name}
+              value={statusConfirmationText}
+              onChange={(e) => setStatusConfirmationText(e.target.value)}
+              helperText="Type the user's name to confirm the ban."
+              sx={{ mt: 1 }}
+            />
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setStatusDialog(null)} sx={{ color: '#64748b', fontWeight: 'bold' }}>Cancel</Button>
-          <Button variant="contained" onClick={handleUpdateStatus} sx={{ backgroundColor: statusDialog?.currentStatus === 'active' ? '#dc2626' : '#16a34a', boxShadow: 'none', fontWeight: 'bold', '&:hover': { backgroundColor: statusDialog?.currentStatus === 'active' ? '#b91c1c' : '#15803d' } }}>Yes, {statusDialog?.currentStatus === 'active' ? 'Ban' : 'Unban'}</Button>
+          <Button onClick={handleCloseStatusDialog} sx={{ color: '#64748b', fontWeight: 'bold' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleUpdateStatus}
+            disabled={statusDialog?.currentStatus === 'active' && statusConfirmationText !== statusDialog?.name}
+            sx={{ backgroundColor: statusDialog?.currentStatus === 'active' ? '#dc2626' : '#16a34a', boxShadow: 'none', fontWeight: 'bold', '&:hover': { backgroundColor: statusDialog?.currentStatus === 'active' ? '#b91c1c' : '#15803d' }, '&.Mui-disabled': { backgroundColor: statusDialog?.currentStatus === 'active' ? '#fca5a5' : '#86efac', color: '#fff' } }}
+          >
+            Yes, {statusDialog?.currentStatus === 'active' ? 'Ban' : 'Unban'}
+          </Button>
         </DialogActions>
       </Dialog>
 
