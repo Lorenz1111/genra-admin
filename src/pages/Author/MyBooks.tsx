@@ -23,6 +23,8 @@ interface Genre {
   name: string;
 }
 
+const COVER_BUCKET = 'covers';
+
 export default function MyBooks() {
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -136,10 +138,10 @@ export default function MyBooks() {
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `${session.user.id}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage.from('public_assets').upload(filePath, editCoverFile);
+        const { error: uploadError } = await supabase.storage.from(COVER_BUCKET).upload(filePath, editCoverFile);
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage.from('public_assets').getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage.from(COVER_BUCKET).getPublicUrl(filePath);
         finalCoverUrl = publicUrl;
       }
 
